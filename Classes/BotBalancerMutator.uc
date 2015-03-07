@@ -187,13 +187,14 @@ event TimerCheckPlayerCount()
 
 function OnBotDeath_PreCheck(Pawn Other, Object Sender)
 {
+	local Controller C;
 	`log(name$"::OnBotDeath_PreCheck - Other:"@Other$" - Sender:"@Sender,,'BotBalancer');
 	
-	if (UTBot(Other.Controller) != none)
+	if (GetController(Other, C) && UTBot(C) != none)
 	{
 		// revert so bot spawns normally (and does not get destroyed)
-		UTBot(Other.Controller).bSpawnedByKismet = false;
-		BotsWaitForRespawn.AddItem(UTBot(Other.Controller));
+		UTBot(C).bSpawnedByKismet = false;
+		BotsWaitForRespawn.AddItem(UTBot(C));
 	}
 	CacheGame.bForceAllRed = true;
 }
@@ -274,12 +275,26 @@ function AddBots(int InDesiredPlayerCount)
 	}
 }
 
+function bool GetController(Pawn P, out Controller C)
+{
+	if (P == none)
+		return false;
+
+	C = P.Controller;
+	if (C == None && P.DrivenVehicle != None)
+	{
+		C = P.DrivenVehicle.Controller;
+	}
+
+	return C != none;
+}
+
 DefaultProperties
 {
 	// --- Config ---
 	
 	UseLevelRecommendation=false
 	PlayersVsBots=true
-	PlayersSide=1
+	PlayersSide=0
 	BotRatio=1.0
 }

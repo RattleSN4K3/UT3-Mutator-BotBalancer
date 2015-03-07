@@ -20,11 +20,14 @@ event BaseChange()
 	super.BaseChange();
 
 	P = Pawn(Base);
-	if (P != none)
+	if (P != none && P.Controller != none)
 	{
 		evnt = new(Outer) class'BotBalancerEventPawnDeath';
 		evnt.SetPawnDeathEventDelegate(OnEventPawnDeath);
-		P.LatentActions.AddItem(evnt);
+		
+		// attach action to Controller instead of Pawn, 
+		// otherwise the action is not called for dying players in vehicles
+		P.Controller.LatentActions.AddItem(evnt);
 
 		EventDeathHandler = evnt;
 	}

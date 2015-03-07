@@ -6,11 +6,8 @@ function AbortFor(Actor latentActor)
 {
 	local Pawn P;
 
-	P = Pawn(latentActor);
-	if (P != none)
-	{
-		OnPawnDeath(P, self);
-	}
+	P = (UTBot(latentActor) != none ? UTBot(latentActor).Pawn : Pawn(latentActor));
+	OnPawnDeath(P, self);
 }
 
 public function SetPawnDeathEventDelegate(delegate<OnPawnDeath> DeathDelegate)
