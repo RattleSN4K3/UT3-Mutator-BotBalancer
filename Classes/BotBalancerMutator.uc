@@ -6,10 +6,11 @@ class BotBalancerMutator extends UTMutator
 //**********************************************************************************
 
 var int DesiredPlayerCount;
+var bool bOriginalForceAllRed;
 
 var private UTTeamGame CacheGame;
 var private class<UTBot> CacheBotClass;
-var private array<UTBot> WaitBotsRespawn;
+var private array<UTBot> BotsWaitForRespawn;
 
 //**********************************************************************************
 // Config
@@ -78,6 +79,34 @@ function MatchStarting()
 	SetTimer(1.0, true, 'TimerCheckPlayerCount');
 }
 
+
+/* called by GameInfo.RestartPlayer()
+	change the players jumpz, etc. here
+*/
+function ModifyPlayer(Pawn Other)
+{
+	local UTBot bot;
+	`Log(name$"::ModifyPlayer - Other:"@Other,,'BotBalancer');
+	super.ModifyPlayer(Other);
+
+	if (Other == none || UTBot(Other.Controller) == none) return;
+	bot = UTBot(Other.Controller);
+
+	if (BotsWaitForRespawn.Length > 0)
+	{
+		// remove spawning bot from array
+		BotsWaitForRespawn.RemoveItem(bot);
+		// also remove invalid references, just in case
+		BotsWaitForRespawn.RemoveItem(none);
+
+		// revert to original if all bots respawned (at least once)
+		if (BotsWaitForRespawn.Length < 1)
+		{
+			CacheGame.bForceAllRed = bOriginalForceAllRed;
+		}
+	}
+}
+
 //**********************************************************************************
 // Events
 //**********************************************************************************
@@ -125,30 +154,33 @@ function int GetNextTeamIndex(bool bBot)
 function AddBots(int InDesiredPlayerCount)
 {
 	local int TeamNum;
-	local bool bAbort;
+	local UTBot bot;
 
 	// force TooManyBots fail out. it is called right on initial spawn for bots
 	bOriginalForceAllRed = CacheGame.bForceAllRed;
 	CacheGame.bForceAllRed = true;
 
 	DesiredPlayerCount = Clamp(InDesiredPlayerCount, 1, 32);
-	while (!bAbort && CacheGame.NumPlayers + CacheGame.NumBots < DesiredPlayerCount)
+	while (CacheGame.NumPlayers + CacheGame.NumBots < DesiredPlayerCount)
 	{
 		// restore Game's original bot class
 		CacheGame.BotClass = CacheBotClass;
 
 		// add bot to the specific team
 		TeamNum = GetNextTeamIndex(true);
-		bAbort = CacheGame.AddBot(,true,TeamNum) == none;
+		bot = CacheGame.AddBot(,true,TeamNum);
 
 		// revert to null class to preven adding bots;
 		CacheGame.BotClass = class'BotBalancerNullBot';
 
-		if (bAbort) break;
+		if (bot == none)
+			break;
+		
+		BotsWaitForRespawn.AddItem(bot);
 	}
 
 	// revert to original if not bot was added to array
-	if (WaitBotsRespawn.Length < 1)
+	if (BotsWaitForRespawn.Length < 1)
 	{
 		CacheGame.bForceAllRed = bOriginalForceAllRed;
 	}
