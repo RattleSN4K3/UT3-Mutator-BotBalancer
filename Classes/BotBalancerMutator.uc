@@ -87,7 +87,7 @@ function MatchStarting()
 function ModifyPlayer(Pawn Other)
 {
 	local UTBot bot, botset;
-	local BotBalancerEventPawnDeath evnt;
+	local BotBalancerHelperPawnDeath pd;
 
 	`Log(name$"::ModifyPlayer - Other:"@Other,,'BotBalancer');
 	super.ModifyPlayer(Other);
@@ -95,16 +95,23 @@ function ModifyPlayer(Pawn Other)
 	if (Other == none || UTBot(Other.Controller) == none) return;
 	bot = UTBot(Other.Controller);
 
+	foreach Other.BasedActors(class'BotBalancerHelperPawnDeath', pd)
+		break;
+
+	if (pd == none)
+	{
+		// attach helper which trigger events fro death. this is used to revert bSpawnedByKismet and set bForceAllRed
+		pd = Other.Spawn(class'BotBalancerHelperPawnDeath');
+		pd.SetPlayerDeathDelegate(OnBotDeath_PreCheck, OnBotDeath_PostCheck);
+		pd.SetBase(Other);
+	}
+
 	// prevents from calling TooManyBots whenever the bot idles
 	// (and also from checking for too many bots or unbalanced teams)
 	//@TODO: revert on pre death
 	bot.bSpawnedByKismet = true;
 
-	// attach event which will be called pre-death. this is used to revert bSpawnedByKismet
-	evnt = new(Outer) class'BotBalancerEventPawnDeath';
-	evnt.SetPawnDeathEventDelegate(OnBotDeath);
-	Other.LatentActions.AddItem(evnt);
-
+	
 	if (BotsWaitForRespawn.Length > 0)
 	{
 		// remove spawning bot from array
@@ -156,9 +163,9 @@ event TimerCheckPlayerCount()
 // Delegate callbacks
 //**********************************************************************************
 
-function OnBotDeath(Pawn Other, Object Sender)
+function OnBotDeath_PreCheck(Pawn Other, Object Sender)
 {
-	`log(name$"::OnBotDeath - Other:"@Other$" - Sender:"@Sender,,'BotBalancer');
+	`log(name$"::OnBotDeath_PreCheck - Other:"@Other$" - Sender:"@Sender,,'BotBalancer');
 	
 	if (UTBot(Other.Controller) != none)
 	{
@@ -166,6 +173,12 @@ function OnBotDeath(Pawn Other, Object Sender)
 		UTBot(Other.Controller).bSpawnedByKismet = false;
 	}
 	CacheGame.bForceAllRed = true;
+}
+
+function OnBotDeath_PostCheck(Pawn Other, Actor Sender)
+{
+	`log(name$"::OnBotDeath_PostCheck - Other:"@Other$" - Sender:"@Sender,,'BotBalancer');
+	CacheGame.bForceAllRed = false;
 }
 
 //**********************************************************************************
