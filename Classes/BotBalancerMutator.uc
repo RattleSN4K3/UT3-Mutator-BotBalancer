@@ -212,17 +212,33 @@ function OnBotDeath_PostCheck(Pawn Other, Actor Sender)
 function int GetNextTeamIndex(bool bBot)
 {
 	local UTTeamInfo BotTeam;
+	local name packagename;
 	
 	if (PlayersVsBots && bBot)
 	{
-		if (CacheGame.Class == class'UTTeamGame')
+		packagename = CacheGame.class.GetPackageName();
+		switch (packagename)
 		{
+		case 'UTGame':
+		case 'UTGameContent':
+		case 'UT3GoldGame':
+			if (UTDuelGame(CacheGame) != none) // in case, but in general Duel isn't allowed to run this mutator
+			{
+				//@TODO: add support for Duel
+				return 0;
+			}
 			return Clamp(1 - PlayersSide, 0, 1);
-		}
-		else if (WorldInfo.GRI.Teams.Length > 2)
-		{
-			//@TODO: add support for MultiTeam (4-teams)
-			return PlayersSide;
+			break;
+		default:
+			if (WorldInfo.GRI.Teams.Length == 1)
+				return WorldInfo.GRI.Teams[0].TeamIndex;
+			else if (WorldInfo.GRI.Teams.Length == 2)
+				return Clamp(1 - PlayersSide, 0, 1);
+			else if (WorldInfo.GRI.Teams.Length > 2)
+			{
+				//@TODO: add support for MultiTeam (4-teams)
+				return PlayersSide;
+			}
 		}
 		
 		return 1;
