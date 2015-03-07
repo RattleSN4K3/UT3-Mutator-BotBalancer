@@ -87,6 +87,7 @@ function MatchStarting()
 function ModifyPlayer(Pawn Other)
 {
 	local UTBot bot, botset;
+	local BotBalancerEventPawnDeath evnt;
 
 	`Log(name$"::ModifyPlayer - Other:"@Other,,'BotBalancer');
 	super.ModifyPlayer(Other);
@@ -98,6 +99,11 @@ function ModifyPlayer(Pawn Other)
 	// (and also from checking for too many bots or unbalanced teams)
 	//@TODO: revert on pre death
 	bot.bSpawnedByKismet = true;
+
+	// attach event which will be called pre-death. this is used to revert bSpawnedByKismet
+	evnt = new(Outer) class'BotBalancerEventPawnDeath';
+	evnt.SetPawnDeathEventDelegate(OnBotDeath);
+	Other.LatentActions.AddItem(evnt);
 
 	if (BotsWaitForRespawn.Length > 0)
 	{
@@ -144,6 +150,22 @@ event TimerCheckPlayerCount()
 		// clear player count again to stop throw error messages (due to timed NeedPlayers-call)
 		DesiredPlayerCount = CacheGame.DesiredPlayerCount;
 	}
+}
+
+//**********************************************************************************
+// Delegate callbacks
+//**********************************************************************************
+
+function OnBotDeath(Pawn Other, Object Sender)
+{
+	`log(name$"::OnBotDeath - Other:"@Other$" - Sender:"@Sender,,'BotBalancer');
+	
+	if (UTBot(Other.Controller) != none)
+	{
+		// revert so bot spawns normally (and does not get destroyed)
+		UTBot(Other.Controller).bSpawnedByKismet = false;
+	}
+	CacheGame.bForceAllRed = true;
 }
 
 //**********************************************************************************
@@ -210,7 +232,7 @@ DefaultProperties
 {
 	// --- Config ---
 	
-	UseLevelRecommendation=true
-	PlayersVsBots=false
+	UseLevelRecommendation=false
+	PlayersVsBots=true
 	BotRatio=1.0
 }
