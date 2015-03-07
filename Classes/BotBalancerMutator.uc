@@ -94,6 +94,11 @@ function ModifyPlayer(Pawn Other)
 	if (Other == none || UTBot(Other.Controller) == none) return;
 	bot = UTBot(Other.Controller);
 
+	// prevents from calling TooManyBots whenever the bot idles
+	// (and also from checking for too many bots or unbalanced teams)
+	//@TODO: revert on pre death
+	bot.bSpawnedByKismet = true;
+
 	if (BotsWaitForRespawn.Length > 0)
 	{
 		// remove spawning bot from array
