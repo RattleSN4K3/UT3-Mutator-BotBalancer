@@ -2,6 +2,12 @@ class BotBalancerMutator extends UTMutator
 	config(BotBalancer);
 
 //**********************************************************************************
+// Workflow variables
+//**********************************************************************************
+
+var int DesiredPlayerCount;
+
+//**********************************************************************************
 // Config
 //**********************************************************************************
 
@@ -22,12 +28,17 @@ function bool MutatorIsAllowed()
 function InitMutator(string Options, out string ErrorMessage)
 {
 	local UTGame G;
-   
+
 	`Log(name$"::InitMutator - Options:"@Options,,'BotBalancer');
 	 super.InitMutator(Options, ErrorMessage);
 
-    G = UTGame(WorldInfo.Game);
-    if (G == none) return;
+	G = UTGame(WorldInfo.Game);
+	if (G == none) return;
+
+	// set bot class to a null class (abstract) which prevents
+	// bots being spawned by commands like (addbots, addbluebots,...)
+	//but also timed by NeedPlayers in GameInfo::Timer
+	G.BotClass = class'BotBalancerNullBot';
 
 	// Disable auto balancing of bot teams.
 	G.bCustomBots = true;
@@ -46,12 +57,39 @@ function MatchStarting()
 	super.MatchStarting();
 
 	G = UTGame(WorldInfo.Game);
-    if (G == none) return;
+	if (G == none) return;
 
 	if (UseLevelRecommendation)
 	{
 		G.bAutoNumBots = true;
-		G.DesiredPlayerCount = G.LevelRecommendedPlayers();
+		DesiredPlayerCount = G.LevelRecommendedPlayers();
+	}
+	else
+	{
+		DesiredPlayerCount = G.DesiredPlayerCount;
+	}
+
+	SetTimer(1.0, true, 'TimerCheckPlayerCount');
+}
+
+//**********************************************************************************
+// Events
+//**********************************************************************************
+
+event TimerCheckPlayerCount()
+{
+	local UTGame G;
+	
+	G = UTGame(WorldInfo.Game);
+	if (G == none) return;
+	
+	if (G.DesiredPlayerCount > 0)
+	{
+		// attempted to add bots through external code, use custom code now
+
+
+		// clear player count again to stop throw error messages (due to timed NeedPlayers-call)
+		G.DesiredPlayerCount = 0;
 	}
 }
 
@@ -61,4 +99,5 @@ DefaultProperties
 	
 	UseLevelRecommendation=true
 	PlayersVsBots=false
+	BotRatio=1.0
 }
