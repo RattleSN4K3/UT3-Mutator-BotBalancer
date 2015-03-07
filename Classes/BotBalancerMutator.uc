@@ -7,6 +7,8 @@ class BotBalancerMutator extends UTMutator
 
 var int DesiredPlayerCount;
 
+var private UTTeamGame CacheGame;
+
 //**********************************************************************************
 // Config
 //**********************************************************************************
@@ -27,46 +29,46 @@ function bool MutatorIsAllowed()
 
 function InitMutator(string Options, out string ErrorMessage)
 {
-	local UTGame G;
-
 	`Log(name$"::InitMutator - Options:"@Options,,'BotBalancer');
 	 super.InitMutator(Options, ErrorMessage);
 
-	G = UTGame(WorldInfo.Game);
-	if (G == none) return;
+	CacheGame = UTTeamGame(WorldInfo.Game);
+	if (CacheGame == none)
+	{
+		Destroy();
+		return;
+	}
 
 	// set bot class to a null class (abstract) which prevents
 	// bots being spawned by commands like (addbots, addbluebots,...)
-	//but also timed by NeedPlayers in GameInfo::Timer
-	G.BotClass = class'BotBalancerNullBot';
+	// but also timed by NeedPlayers in GameInfo::Timer
+	CacheGame.BotClass = class'BotBalancerNullBot';
 
 	// Disable auto balancing of bot teams.
-	G.bCustomBots = true;
+	CacheGame.bCustomBots = true;
 
 	// override
-	G.bPlayersVsBots = PlayersVsBots;
-	G.BotRatio = BotRatio;
+	CacheGame.bPlayersVsBots = PlayersVsBots;
+	CacheGame.BotRatio = BotRatio;
 }
 
 // called when gameplay actually starts
 function MatchStarting()
 {
-	local UTGame G;
-
 	`Log(name$"::MatchStarting",,'BotBalancer');
 	super.MatchStarting();
 
-	G = UTGame(WorldInfo.Game);
-	if (G == none) return;
+	if (CacheGame == none)
+		return;
 
 	if (UseLevelRecommendation)
 	{
-		G.bAutoNumBots = true;
-		DesiredPlayerCount = G.LevelRecommendedPlayers();
+		CacheGame.bAutoNumBots = true;
+		DesiredPlayerCount = CacheGame.LevelRecommendedPlayers();
 	}
 	else
 	{
-		DesiredPlayerCount = G.DesiredPlayerCount;
+		DesiredPlayerCount = CacheGame.DesiredPlayerCount;
 	}
 
 	SetTimer(1.0, true, 'TimerCheckPlayerCount');
@@ -78,18 +80,16 @@ function MatchStarting()
 
 event TimerCheckPlayerCount()
 {
-	local UTGame G;
-	
-	G = UTGame(WorldInfo.Game);
-	if (G == none) return;
-	
-	if (G.DesiredPlayerCount > 0)
+	if (CacheGame == none)
+		ClearTimer();
+
+	if (CacheGame.DesiredPlayerCount > 0)
 	{
 		// attempted to add bots through external code, use custom code now
 
 
 		// clear player count again to stop throw error messages (due to timed NeedPlayers-call)
-		G.DesiredPlayerCount = 0;
+		CacheGame.DesiredPlayerCount = 0;
 	}
 }
 
