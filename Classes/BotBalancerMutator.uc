@@ -80,7 +80,6 @@ function MatchStarting()
 	SetTimer(1.0, true, 'TimerCheckPlayerCount');
 }
 
-
 /* called by GameInfo.RestartPlayer()
 	change the players jumpz, etc. here
 */
@@ -138,6 +137,28 @@ function ModifyPlayer(Pawn Other)
 			}
 		}
 	}
+}
+
+function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
+{
+	if (super.AllowChangeTeam(Other, num, bNewTeam))
+	{
+		// disallow players changing team if PlayersVsBots is set
+		if (PlayersVsBots && PlayerController(Other) != none)
+		{
+			if (bNewTeam && num != 0)
+			{
+				PlayerController(Other).ReceiveLocalizedMessage(class'UTTeamGameMessage', 1);
+				return false;
+			}
+			//if (num != 0 && !bNewTeam)
+			//{
+			//	num = num;
+			//}
+		}
+	}
+
+	return True;
 }
 
 //**********************************************************************************
