@@ -19,6 +19,7 @@ var private array<UTBot> BotsSetOrders;
 
 var() config bool UseLevelRecommendation;
 var() config bool PlayersVsBots;
+var() config byte PlayersSide;
 var() config float BotRatio;
 
 //**********************************************************************************
@@ -146,15 +147,15 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 		// disallow players changing team if PlayersVsBots is set
 		if (PlayersVsBots && PlayerController(Other) != none)
 		{
-			if (bNewTeam && num != 0)
+			if (bNewTeam && num != PlayersSide)
 			{
 				PlayerController(Other).ReceiveLocalizedMessage(class'UTTeamGameMessage', 1);
 				return false;
 			}
-			//if (num != 0 && !bNewTeam)
-			//{
-			//	num = num;
-			//}
+			else if (!bNewTeam)
+			{
+				num = PlayersSide;
+			}
 		}
 	}
 
@@ -213,6 +214,16 @@ function int GetNextTeamIndex(bool bBot)
 	
 	if (PlayersVsBots && bBot)
 	{
+		if (CacheGame.Class == class'UTTeamGame')
+		{
+			return Clamp(1 - PlayersSide, 0, 1);
+		}
+		else if (WorldInfo.GRI.Teams.Length > 2)
+		{
+			//@TODO: add support for MultiTeam (4-teams)
+			return PlayersSide;
+		}
+		
 		return 1;
 	}
 
@@ -269,5 +280,6 @@ DefaultProperties
 	
 	UseLevelRecommendation=false
 	PlayersVsBots=true
+	PlayersSide=1
 	BotRatio=1.0
 }
