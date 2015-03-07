@@ -171,6 +171,7 @@ function OnBotDeath_PreCheck(Pawn Other, Object Sender)
 	{
 		// revert so bot spawns normally (and does not get destroyed)
 		UTBot(Other.Controller).bSpawnedByKismet = false;
+		BotsWaitForRespawn.AddItem(UTBot(Other.Controller));
 	}
 	CacheGame.bForceAllRed = true;
 }
@@ -178,7 +179,7 @@ function OnBotDeath_PreCheck(Pawn Other, Object Sender)
 function OnBotDeath_PostCheck(Pawn Other, Actor Sender)
 {
 	`log(name$"::OnBotDeath_PostCheck - Other:"@Other$" - Sender:"@Sender,,'BotBalancer');
-	CacheGame.bForceAllRed = false;
+	//CacheGame.bForceAllRed = false;
 }
 
 //**********************************************************************************
