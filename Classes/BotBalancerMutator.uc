@@ -11,6 +11,7 @@ var bool bOriginalForceAllRed;
 var private UTTeamGame CacheGame;
 var private class<UTBot> CacheBotClass;
 var private array<UTBot> BotsWaitForRespawn;
+var private array<UTBot> BotsSetOrders;
 
 //**********************************************************************************
 // Config
@@ -85,7 +86,8 @@ function MatchStarting()
 */
 function ModifyPlayer(Pawn Other)
 {
-	local UTBot bot;
+	local UTBot bot, botset;
+
 	`Log(name$"::ModifyPlayer - Other:"@Other,,'BotBalancer');
 	super.ModifyPlayer(Other);
 
@@ -99,10 +101,23 @@ function ModifyPlayer(Pawn Other)
 		// also remove invalid references, just in case
 		BotsWaitForRespawn.RemoveItem(none);
 
+		// cache bot to re-set orders
+		BotsSetOrders.AddItem(bot);
+
 		// revert to original if all bots respawned (at least once)
 		if (BotsWaitForRespawn.Length < 1)
 		{
 			CacheGame.bForceAllRed = bOriginalForceAllRed;
+
+			// re-set all bot orders for spawned bots
+			BotsSetOrders.RemoveItem(none);
+			foreach BotsSetOrders(botset)
+			{
+				if (botset.PlayerReplicationInfo != none && UTTeamInfo(botset.PlayerReplicationInfo.Team) != none)
+				{
+					UTTeamInfo(botset.PlayerReplicationInfo.Team).SetBotOrders(botset);
+				}
+			}
 		}
 	}
 }
