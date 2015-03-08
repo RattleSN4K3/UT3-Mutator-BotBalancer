@@ -152,7 +152,7 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 		{
 			if (bNewTeam && num != PlayersSide)
 			{
-				PlayerController(Other).ReceiveLocalizedMessage(class'UTTeamGameMessage', 1);
+				PlayerController(Other).ReceiveLocalizedMessage(class'UTTeamGameMessage', PlayersSide == 0 ? 1 : 2);
 				return false;
 			}
 			else if (!bNewTeam)
