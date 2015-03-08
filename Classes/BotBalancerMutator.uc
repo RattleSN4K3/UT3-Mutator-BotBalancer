@@ -5,7 +5,9 @@ class BotBalancerMutator extends UTMutator
 // Workflow variables
 //**********************************************************************************
 
+var bool bForcDesiredPlayerCount;
 var int DesiredPlayerCount;
+
 var bool bOriginalForceAllRed;
 
 var private UTTeamGame CacheGame;
@@ -72,6 +74,7 @@ function MatchStarting()
 	{
 		CacheGame.bAutoNumBots = true;
 		DesiredPlayerCount = CacheGame.LevelRecommendedPlayers();
+		bForcDesiredPlayerCount = true;
 	}
 	else
 	{
@@ -173,6 +176,12 @@ event TimerCheckPlayerCount()
 
 	if (CacheGame.DesiredPlayerCount != DesiredPlayerCount)
 	{
+		if (bForcDesiredPlayerCount)
+		{
+			CacheGame.DesiredPlayerCount = DesiredPlayerCount;
+			bForcDesiredPlayerCount = false;
+		}
+
 		// attempted to add bots through external code, use custom code now
 		AddBots(CacheGame.DesiredPlayerCount);
 
@@ -314,7 +323,7 @@ DefaultProperties
 {
 	// --- Config ---
 	
-	UseLevelRecommendation=false
+	UseLevelRecommendation=true
 	PlayersVsBots=false
 	PlayersSide=0
 	BotRatio=1.0
