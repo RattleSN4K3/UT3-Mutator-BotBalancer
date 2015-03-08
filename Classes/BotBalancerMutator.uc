@@ -1,6 +1,12 @@
 class BotBalancerMutator extends UTMutator
 	config(BotBalancer);
 
+`if(`notdefined(FINAL_RELEASE))
+	var bool bShowDebug;
+
+	var bool bDebugSwitchToSpectator;
+`endif
+
 //**********************************************************************************
 // Workflow variables
 //**********************************************************************************
@@ -95,6 +101,40 @@ function MatchStarting()
 	SetTimer(1.0, true, 'TimerCheckPlayerCount');
 }
 
+`if(`notdefined(FINAL_RELEASE))
+function NotifyLogin(Controller NewPlayer)
+{
+	local PlayerController PC;
+
+	`Log(name$"::NotifyLogin - NewPlayer:"@NewPlayer,,'BotBalancer');
+	super.NotifyLogin(NewPlayer);
+
+	PC = PlayerController(NewPlayer);
+	if (PC != none && PC.bIsPlayer && PC.PlayerReplicationInfo != none)
+	{
+		if (bDebugSwitchToSpectator && PC.IsLocalPlayerController())
+		{
+			PC.PlayerReplicationInfo.bIsSpectator = true;
+			PC.PlayerReplicationInfo.bOnlySpectator = true;
+			PC.PlayerReplicationInfo.bOutOfLives = true;
+
+			if (UTPlayerController(PC) != none)
+			{
+				UTPlayerController(PC).ServerSpectate();
+				PC.ClientGotoState('Spectating');
+			}
+			else
+			{
+				PC.GotoState('Spectating');
+				PC.ClientGotoState('Spectating');
+			}
+
+			PC.UpdateURL("SpectatorOnly", "1", false);
+		}
+	}
+}
+`endif
+
 /* called by GameInfo.RestartPlayer()
 	change the players jumpz, etc. here
 */
@@ -122,7 +162,6 @@ function ModifyPlayer(Pawn Other)
 
 	// prevents from calling TooManyBots whenever the bot idles
 	// (and also from checking for too many bots or unbalanced teams)
-	//@TODO: revert on pre death
 	bot.bSpawnedByKismet = true;
 
 	
@@ -518,6 +557,11 @@ function bool GetController(Pawn P, out Controller C)
 
 DefaultProperties
 {
+	`if(`notdefined(FINAL_RELEASE))
+		bShowDebug=true
+		bDebugSwitchToSpectator=false
+	`endif
+
 	// --- Config ---
 	
 	UseLevelRecommendation=false
