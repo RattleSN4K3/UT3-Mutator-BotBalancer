@@ -77,11 +77,14 @@ function MatchStarting()
 		bForcDesiredPlayerCount = true;
 	}
 	else if (CacheGame.HasOption(CacheGame.ServerOptions, "NumPlay"))
-	{	
+	{
+		// clear desired player count which then uses
+		// the Game's desired value in the next timer
 		DesiredPlayerCount = 0;
 	}
 	else
 	{
+		// just cache desired player count, also prevents adding bots at start
 		DesiredPlayerCount = CacheGame.DesiredPlayerCount;
 	}
 
@@ -310,12 +313,15 @@ function int GetNextTeamIndex(bool bBot)
 			}
 		}
 
+		// if a proper team could be found, use that team
 		if (index != INDEX_NONE)
 		{
 			return index;
 		}
 		else
 		{
+			// use original algorthim to find proper team index
+			// to prevent using always the Red team, we swap that flag temporarily
 			bSwap = CacheGame.bForceAllRed;
 			CacheGame.bForceAllRed = false;
 			BotTeam = CacheGame.GetBotTeam();
