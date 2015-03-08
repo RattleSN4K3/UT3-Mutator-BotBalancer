@@ -84,7 +84,7 @@ Without copying/moving the file, the game must be started with the *UseUnpublish
 
 
 # License
-Available under [the MIT license](http://mths.be/mit).
+Available under [the MIT license](http://opensource.org/licenses/mit-license.php).
 
 # Author
 RattleSN4K3
