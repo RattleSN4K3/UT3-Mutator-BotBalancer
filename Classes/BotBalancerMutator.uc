@@ -213,6 +213,7 @@ function int GetNextTeamIndex(bool bBot)
 {
 	local UTTeamInfo BotTeam;
 	local name packagename;
+	local bool bSwap;
 	
 	if (PlayersVsBots && bBot)
 	{
@@ -246,7 +247,11 @@ function int GetNextTeamIndex(bool bBot)
 
 	if (CacheGame != none)
 	{
+		bSwap = CacheGame.bForceAllRed;
+		CacheGame.bForceAllRed = false;
 		BotTeam = CacheGame.GetBotTeam();
+		CacheGame.bForceAllRed = bSwap;
+
 		if (BotTeam != none)
 		{
 			return BotTeam.TeamIndex;
@@ -310,7 +315,7 @@ DefaultProperties
 	// --- Config ---
 	
 	UseLevelRecommendation=false
-	PlayersVsBots=true
+	PlayersVsBots=false
 	PlayersSide=0
 	BotRatio=1.0
 }
