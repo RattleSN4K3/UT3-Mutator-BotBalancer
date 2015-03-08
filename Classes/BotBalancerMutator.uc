@@ -76,6 +76,10 @@ function MatchStarting()
 		DesiredPlayerCount = CacheGame.LevelRecommendedPlayers();
 		bForcDesiredPlayerCount = true;
 	}
+	else if (CacheGame.HasOption(CacheGame.ServerOptions, "NumPlay"))
+	{	
+		DesiredPlayerCount = 0;
+	}
 	else
 	{
 		DesiredPlayerCount = CacheGame.DesiredPlayerCount;
