@@ -143,6 +143,11 @@ function NotifyLogout(Controller Exiting)
 	`Log(name$"::NotifyLogout - Exiting:"@Exiting,,'BotBalancer');
 	super.NotifyLogout(Exiting);
 	BotsSpawnedOnce.RemoveItem(UTBot(Exiting));
+
+	if (bMatchStarted && UTBot(Exiting) == none)
+	{
+		BalanceBotsTeams();
+	}
 }
 
 /* called by GameInfo.RestartPlayer()
