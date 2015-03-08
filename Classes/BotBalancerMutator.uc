@@ -143,6 +143,9 @@ function ModifyPlayer(Pawn Other)
 					UTTeamInfo(botset.PlayerReplicationInfo.Team).SetBotOrders(botset);
 				}
 			}
+
+			// clear cache as all orders are set
+			BotsSetOrders.Length = 0;
 		}
 	}
 }
