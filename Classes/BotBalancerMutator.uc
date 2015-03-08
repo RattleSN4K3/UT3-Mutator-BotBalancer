@@ -24,6 +24,9 @@ var private class<UTBot> CacheBotClass;
 var private array<UTBot> BotsWaitForRespawn;
 var private array<UTBot> BotsSetOrders;
 
+/** Used to track down spawned bots within the custom addbots code */
+var private array<UTBot> BotsSpawnedOnce;
+
 //**********************************************************************************
 // Config
 //**********************************************************************************
@@ -135,12 +138,19 @@ function NotifyLogin(Controller NewPlayer)
 }
 `endif
 
+function NotifyLogout(Controller Exiting)
+{
+	`Log(name$"::NotifyLogout - Exiting:"@Exiting,,'BotBalancer');
+	super.NotifyLogout(Exiting);
+	BotsSpawnedOnce.RemoveItem(UTBot(Exiting));
+}
+
 /* called by GameInfo.RestartPlayer()
 	change the players jumpz, etc. here
 */
 function ModifyPlayer(Pawn Other)
 {
-	local UTBot bot, botset;
+	local UTBot bot;
 	local BotBalancerHelperPawnDeath pd;
 
 	`Log(name$"::ModifyPlayer - Other:"@Other,,'BotBalancer');
@@ -181,18 +191,17 @@ function ModifyPlayer(Pawn Other)
 			CacheGame.bForceAllRed = bOriginalForceAllRed;
 
 			// re-set all bot orders for spawned bots
-			BotsSetOrders.RemoveItem(none);
-			foreach BotsSetOrders(botset)
-			{
-				if (botset.PlayerReplicationInfo != none && UTTeamInfo(botset.PlayerReplicationInfo.Team) != none)
-				{
-					UTTeamInfo(botset.PlayerReplicationInfo.Team).SetBotOrders(botset);
-				}
-			}
+			ResetBotOrders(BotsSetOrders);
 
 			// clear cache as all orders are set
 			BotsSetOrders.Length = 0;
 		}
+	}
+
+	// add bots to array of spawned bots
+	if (BotsSpawnedOnce.Find(bot) == INDEX_NONE)
+	{
+		BotsSpawnedOnce.AddItem(bot);
 	}
 }
 
@@ -364,8 +373,11 @@ function int GetNextTeamIndex(bool bBot)
 
 function AddBots(int InDesiredPlayerCount)
 {
-	local int TeamNum;
+	local int TeamNum, OldBotCount;
 	local UTBot bot;
+	local array<UTBot> tempbots;
+
+	OldBotCount = BotsSpawnedOnce.Length;
 
 	// force TooManyBots fail out. it is called right on initial spawn for bots
 	bOriginalForceAllRed = CacheGame.bForceAllRed;
@@ -387,13 +399,36 @@ function AddBots(int InDesiredPlayerCount)
 		if (bot == none)
 			break;
 		
-		BotsWaitForRespawn.AddItem(bot);
+		tempbots.AddItem(bot);
+		if (BotsSpawnedOnce.Find(bot) == INDEX_NONE)
+		{
+			BotsWaitForRespawn.AddItem(bot);
+		}
 	}
 
 	// revert to original if not bot was added to array
 	if (BotsWaitForRespawn.Length < 1)
 	{
 		CacheGame.bForceAllRed = bOriginalForceAllRed;
+	}
+
+	if (OldBotCount != BotsSpawnedOnce.Length && !CacheGame.bForceAllRed)
+	{
+		ResetBotOrders(tempbots);
+	}
+}
+
+function ResetBotOrders(array<UTBot> bots)
+{
+	local UTBot bot;
+
+	bots.RemoveItem(none);
+	foreach bots(bot)
+	{
+		if (bot.PlayerReplicationInfo != none && UTTeamInfo(bot.PlayerReplicationInfo.Team) != none)
+		{
+			UTTeamInfo(bot.PlayerReplicationInfo.Team).SetBotOrders(bot);
+		}
 	}
 }
 
