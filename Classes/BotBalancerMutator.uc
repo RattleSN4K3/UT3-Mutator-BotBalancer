@@ -37,7 +37,7 @@ function bool MutatorIsAllowed()
 function InitMutator(string Options, out string ErrorMessage)
 {
 	`Log(name$"::InitMutator - Options:"@Options,,'BotBalancer');
-	 super.InitMutator(Options, ErrorMessage);
+	super.InitMutator(Options, ErrorMessage);
 
 	CacheGame = UTTeamGame(WorldInfo.Game);
 	if (CacheGame == none)
@@ -223,6 +223,9 @@ function int GetNextTeamIndex(bool bBot)
 	local UTTeamInfo BotTeam;
 	local name packagename;
 	local bool bSwap;
+
+	local int i, index, count, prefer;
+	local array<int> PlayersCount, TeamsCount;
 	
 	if (PlayersVsBots && bBot)
 	{
@@ -256,14 +259,65 @@ function int GetNextTeamIndex(bool bBot)
 
 	if (CacheGame != none)
 	{
-		bSwap = CacheGame.bForceAllRed;
-		CacheGame.bForceAllRed = false;
-		BotTeam = CacheGame.GetBotTeam();
-		CacheGame.bForceAllRed = bSwap;
+		// init team count array
+		PlayersCount.Add(WorldInfo.GRI.Teams.Length);
 
-		if (BotTeam != none)
+		// count real-players
+		for ( i=0; i<WorldInfo.GRI.PRIArray.Length; i++ )
 		{
-			return BotTeam.TeamIndex;
+			// only count non-bots and non-players
+			if (!IsValidPlayer(WorldInfo.GRI.PRIArray[i]))
+				continue;
+
+			// fill up array if needed
+			index = WorldInfo.GRI.PRIArray[i].Team.TeamIndex;
+			if (PlayersCount.Length <= index)
+			{
+				PlayersCount.Add(index-PlayersCount.Length+1);
+			}
+
+			PlayersCount[index]++;
+		}
+
+		// take botratio into account and calculate resulting player count
+		for ( i=0; i<PlayersCount.Length; i++)
+		{
+			// get bot count from team size
+			count = WorldInfo.GRI.Teams[i].Size - PlayersCount[i];
+
+			// use botratio to know how many proper player a team would have
+			TeamsCount[i] = PlayersCount[i]*BotRatio + count;
+		}
+
+		// find team with lowest real player count (prefer team with lower net players)
+		count = MaxInt;
+		prefer = 0;
+		index = INDEX_NONE;
+		for ( i=0; i<TeamsCount.Length; i++)
+		{
+			if (TeamsCount[i] < count || (TeamsCount[i] == count && PlayersCount[i] < prefer))
+			{
+				count = TeamsCount[i];
+				prefer = PlayersCount[i];
+				index = i;
+			}
+		}
+
+		if (index != INDEX_NONE)
+		{
+			return index;
+		}
+		else
+		{
+			bSwap = CacheGame.bForceAllRed;
+			CacheGame.bForceAllRed = false;
+			BotTeam = CacheGame.GetBotTeam();
+			CacheGame.bForceAllRed = bSwap;
+
+			if (BotTeam != none)
+			{
+				return BotTeam.TeamIndex;
+			}
 		}
 	}
 
@@ -305,6 +359,14 @@ function AddBots(int InDesiredPlayerCount)
 	}
 }
 
+function bool IsValidPlayer(PlayerReplicationInfo PRI)
+{
+	if (PRI.bOnlySpectator || PRI.bBot || PRI.Team == none)
+		return false;
+
+	return true;
+}
+
 function bool GetController(Pawn P, out Controller C)
 {
 	if (P == none)
@@ -323,8 +385,8 @@ DefaultProperties
 {
 	// --- Config ---
 	
-	UseLevelRecommendation=true
+	UseLevelRecommendation=false
 	PlayersVsBots=false
 	PlayersSide=0
-	BotRatio=1.0
+	BotRatio=2.0
 }
