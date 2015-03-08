@@ -5,6 +5,9 @@ class BotBalancerMutator extends UTMutator
 // Workflow variables
 //**********************************************************************************
 
+/** Readonly. Set when match has started (MatchStarting was called) */
+var bool bMatchStarted;
+
 var bool bForcDesiredPlayerCount;
 var int DesiredPlayerCount;
 
@@ -88,6 +91,7 @@ function MatchStarting()
 		DesiredPlayerCount = CacheGame.DesiredPlayerCount;
 	}
 
+	bMatchStarted = true;
 	SetTimer(1.0, true, 'TimerCheckPlayerCount');
 }
 
@@ -173,6 +177,17 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 	}
 
 	return True;
+}
+
+function NotifySetTeam(Controller Other, TeamInfo OldTeam, TeamInfo NewTeam, bool bNewTeam)
+{
+	`Log(name$"::NotifySetTeam - Other:"@Other$" - OldTeam:"@OldTeam$" - NewTeam:"@NewTeam$" - bNewTeam:"@bNewTeam,,'BotBalancer');
+	super.NotifySetTeam(Other, OldTeam, NewTeam, bNewTeam);
+
+	if (bMatchStarted && UTBot(Other) == none)
+	{
+		BalanceBotsTeams();
+	}
 }
 
 //**********************************************************************************
@@ -269,68 +284,39 @@ function int GetNextTeamIndex(bool bBot)
 
 	if (CacheGame != none)
 	{
-		// init team count array
-		PlayersCount.Add(WorldInfo.GRI.Teams.Length);
-
-		// count real-players
-		for ( i=0; i<WorldInfo.GRI.PRIArray.Length; i++ )
+		if (GetAdjustedTeamPlayerCount(PlayersCount, TeamsCount))
 		{
-			// only count non-bots and non-players
-			if (!IsValidPlayer(WorldInfo.GRI.PRIArray[i]))
-				continue;
-
-			// fill up array if needed
-			index = WorldInfo.GRI.PRIArray[i].Team.TeamIndex;
-			if (PlayersCount.Length <= index)
+			// find team with lowest real player count (prefer team with lower net players)
+			count = MaxInt;
+			prefer = 0;
+			index = INDEX_NONE;
+			for ( i=0; i<TeamsCount.Length; i++)
 			{
-				PlayersCount.Add(index-PlayersCount.Length+1);
+				if (TeamsCount[i] < count || (TeamsCount[i] == count && PlayersCount[i] < prefer))
+				{
+					count = TeamsCount[i];
+					prefer = PlayersCount[i];
+					index = i;
+				}
 			}
 
-			PlayersCount[index]++;
-		}
-
-		// take botratio into account and calculate resulting player count
-		for ( i=0; i<PlayersCount.Length; i++)
-		{
-			// get bot count from team size
-			count = WorldInfo.GRI.Teams[i].Size - PlayersCount[i];
-
-			// use botratio to know how many proper player a team would have
-			TeamsCount[i] = PlayersCount[i]*BotRatio + count;
-		}
-
-		// find team with lowest real player count (prefer team with lower net players)
-		count = MaxInt;
-		prefer = 0;
-		index = INDEX_NONE;
-		for ( i=0; i<TeamsCount.Length; i++)
-		{
-			if (TeamsCount[i] < count || (TeamsCount[i] == count && PlayersCount[i] < prefer))
+			// if a proper team could be found, use that team
+			if (index != INDEX_NONE)
 			{
-				count = TeamsCount[i];
-				prefer = PlayersCount[i];
-				index = i;
+				return index;
 			}
 		}
 
-		// if a proper team could be found, use that team
-		if (index != INDEX_NONE)
-		{
-			return index;
-		}
-		else
-		{
-			// use original algorthim to find proper team index
-			// to prevent using always the Red team, we swap that flag temporarily
-			bSwap = CacheGame.bForceAllRed;
-			CacheGame.bForceAllRed = false;
-			BotTeam = CacheGame.GetBotTeam();
-			CacheGame.bForceAllRed = bSwap;
+		// use original algorthim to find proper team index
+		// to prevent using always the Red team, we swap that flag temporarily
+		bSwap = CacheGame.bForceAllRed;
+		CacheGame.bForceAllRed = false;
+		BotTeam = CacheGame.GetBotTeam();
+		CacheGame.bForceAllRed = bSwap;
 
-			if (BotTeam != none)
-			{
-				return BotTeam.TeamIndex;
-			}
+		if (BotTeam != none)
+		{
+			return BotTeam.TeamIndex;
 		}
 	}
 
@@ -372,9 +358,145 @@ function AddBots(int InDesiredPlayerCount)
 	}
 }
 
-function bool IsValidPlayer(PlayerReplicationInfo PRI)
+function BalanceBotsTeams()
 {
-	if (PRI.bOnlySpectator || PRI.bBot || PRI.Team == none)
+	local array<int> PlayersCount, TeamsCount;
+	local int i;
+	local int LowestCount, LowestIndex;
+	local int HighestCount, HighestIndex;
+	local int SwitchCount, diff;
+	local UTBot Bot;
+	
+	if (GetAdjustedTeamPlayerCount(PlayersCount, TeamsCount))
+	{
+		// find team with lowest real player count (prefer team with lower net players)
+		LowestCount = MaxInt;
+		LowestIndex = INDEX_NONE;
+		HighestCount = -1;
+		HighestIndex = INDEX_NONE;
+		for ( i=0; i<TeamsCount.Length; i++)
+		{
+			if (TeamsCount[i] < LowestCount)
+			{
+				LowestCount = TeamsCount[i];
+				LowestIndex = i;
+			}
+			if (TeamsCount[i] > HighestCount)
+			{
+				HighestCount = TeamsCount[i];
+				HighestIndex = i;
+			}
+		}
+
+		if (LowestIndex != INDEX_NONE && HighestIndex != INDEX_NONE && HighestIndex != LowestIndex)
+		{
+			diff = HighestCount - LowestCount;
+			if (diff > 1/* && Abs(PlayersCount[HighestIndex] - PlayersCount[LowestIndex]) > 1*/)
+			{
+				SwitchCount = diff/2;
+			}
+		}
+	}
+
+	for (i=0; i<SwitchCount; i++)
+	{
+		// change from highest to lowest team
+		if (!GetRandomPlayerByTeam(WorldInfo.GRI.Teams[HighestIndex], bot))
+			break;
+
+		SwitchBot(bot, LowestIndex);
+	}
+}
+
+function SwitchBot(UTBot bot, int TeamNum)
+{
+	local TeamInfo OldTeam;
+
+	OldTeam = bot.PlayerReplicationInfo.Team;
+	CacheGame.ChangeTeam(bot, TeamNum, true);
+	if (CacheGame.bTeamGame && bot.PlayerReplicationInfo.Team != OldTeam)
+	{
+		if (bot.Pawn != None)
+		{
+			bot.Pawn.PlayerChangedTeam();
+		}
+	}
+}
+
+function bool GetRandomPlayerByTeam(TeamInfo team, out UTBot OutBot)
+{
+	local int i;
+	local array<PlayerReplicationInfo> randoms;
+	
+	for ( i=0; i<WorldInfo.GRI.PRIArray.Length; i++ )
+	{
+		// check for team and ignore net players
+		if (WorldInfo.GRI.PRIArray[i].Team != Team || !IsValidPlayer(WorldInfo.GRI.PRIArray[i], true, true))
+			continue;
+
+		randoms.AddItem(WorldInfo.GRI.PRIArray[i]);
+	}
+
+	if (randoms.Length > 0)
+	{
+		i = Rand(randoms.Length);
+		OutBot = UTBot(randoms[i].Owner);
+		return true;
+	}
+
+	return false;
+}
+
+function bool GetAdjustedTeamPlayerCount(out array<int> PlayersCount, out array<int> TeamsCount)
+{
+	local int i, index, count;
+
+	// init team count array
+	PlayersCount.Add(WorldInfo.GRI.Teams.Length);
+
+	// count real-players
+	for ( i=0; i<WorldInfo.GRI.PRIArray.Length; i++ )
+	{
+		// only count non-bots and non-players
+		if (!IsValidPlayer(WorldInfo.GRI.PRIArray[i]))
+			continue;
+
+		// fill up array if needed
+		index = WorldInfo.GRI.PRIArray[i].Team.TeamIndex;
+		if (PlayersCount.Length <= index)
+		{
+			PlayersCount.Add(index-PlayersCount.Length+1);
+		}
+
+		PlayersCount[index]++;
+	}
+
+	// take botratio into account and calculate resulting player count
+	for ( i=0; i<PlayersCount.Length; i++)
+	{
+		// get bot count from team size
+		count = WorldInfo.GRI.Teams[i].Size - PlayersCount[i];
+
+		// use botratio to know how many proper player a team would have
+		TeamsCount[i] = PlayersCount[i]*BotRatio + count;
+	}
+
+	return true;
+}
+
+//**********************************************************************************
+// Helper functions
+//**********************************************************************************
+
+/** Returns whether the given player is a valid player (no spectator, valid team, etc.).
+ *  By default, only net players are taken into account
+ *  @param PRI the net player (or bot) to check
+ *  @param bCheckBot whether to ignore bots
+ */
+function bool IsValidPlayer(PlayerReplicationInfo PRI, optional bool bCheckBot, optional bool bOnlyBots)
+{
+	if (PRI == none || PRI.bOnlySpectator || (!bCheckBot && PRI.bBot) || PRI.Team == none || 
+		PRI.Owner == none || (bOnlyBots && UTBot(PRI.Owner) == none))
 		return false;
 
 	return true;
