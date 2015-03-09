@@ -224,7 +224,7 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 			}
 			else if (!bNewTeam) // spawning player into the correct 
 			{
-				num = GetNextTeamIndex(AIController(Other));
+				num = GetNextTeamIndex(AIController(Other) != none);
 			}
 		}
 	}
