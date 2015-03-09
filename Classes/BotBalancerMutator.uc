@@ -30,7 +30,9 @@ var private array<UTBot> BotsSpawnedOnce;
 
 // ---=== Override config ===---
 
-var bool bDoPlayersBalanceTeams;
+var bool Use_bPlayersBalanceTeams;
+var bool Use_PlayersVsBots;
+var float Use_BotRatio;
 
 //**********************************************************************************
 // Config
@@ -59,6 +61,7 @@ function bool MutatorIsAllowed()
 function InitMutator(string Options, out string ErrorMessage)
 {
 	local string InOpt;
+
 	`Log(name$"::InitMutator - Options:"@Options,,'BotBalancer');
 	super.InitMutator(Options, ErrorMessage);
 
@@ -69,6 +72,8 @@ function InitMutator(string Options, out string ErrorMessage)
 		return;
 	}
 
+	InitConfig();
+
 	// set bot class to a null class (abstract) which prevents
 	// bots being spawned by commands like (addbots, addbluebots,...)
 	// but also timed by NeedPlayers in GameInfo::Timer
@@ -78,25 +83,19 @@ function InitMutator(string Options, out string ErrorMessage)
 	// Disable auto balancing of bot teams.
 	CacheGame.bCustomBots = true;
 
-	//@TODO: check if needed
-	// override
-	//CacheGame.bPlayersVsBots = PlayersVsBots;
-	//CacheGame.BotRatio = BotRatio;
-
-	if (!class'GameInfo'.static.HasOption(Options, "BalanceTeams"))
-	{
-		bDoPlayersBalanceTeams = bPlayersBalanceTeams;
-	}
-	else
+	// override player-balance flag
+	if (class'GameInfo'.static.HasOption(Options, "BalanceTeams"))
 	{
 		InOpt = class'GameInfo'.static.ParseOption(Options, "BalanceTeams");
-		bDoPlayersBalanceTeams = bool(InOpt);
+		Use_bPlayersBalanceTeams = bool(InOpt);
 	}
 }
 
 // called when gameplay actually starts
 function MatchStarting()
 {
+	local string InOpt;
+
 	`Log(name$"::MatchStarting",,'BotBalancer');
 	super.MatchStarting();
 
@@ -119,6 +118,28 @@ function MatchStarting()
 	{
 		// just cache desired player count, also prevents adding bots at start
 		DesiredPlayerCount = CacheGame.DesiredPlayerCount;
+	}
+
+	// override player-vs-bots vars
+	if (class'GameInfo'.static.HasOption(CacheGame.ServerOptions, "VsBots"))
+	{
+		InOpt = class'GameInfo'.static.ParseOption(CacheGame.ServerOptions, "VsBots");
+		if (InOpt ~= "false" || InOpt ~= "true")
+		{
+			Use_PlayersVsBots = bool(InOpt);
+		}
+		else if (float(InOpt) > 0.0)
+		{
+			Use_PlayersVsBots = true;
+			Use_BotRatio = float(InOpt);
+		}
+	}
+
+	// override ratio var
+	if (class'GameInfo'.static.HasOption(CacheGame.ServerOptions, "BotRatio"))
+	{
+		InOpt = class'GameInfo'.static.ParseOption(CacheGame.ServerOptions, "BotRatio");
+		Use_BotRatio = float(InOpt);
 	}
 
 	bMatchStarted = true;
@@ -235,7 +256,7 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 {
 	if (super.AllowChangeTeam(Other, num, bNewTeam))
 	{
-		if (PlayersVsBots)
+		if (Use_PlayersVsBots)
 		{
 			// disallow changing team if PlayersVsBots is set
 			if (bNewTeam && num != PlayersSide && !AllowTeamChangeVsBots)
@@ -248,7 +269,7 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 				num = GetNextTeamIndex(AIController(Other) != none);
 			}
 		}
-		else if (bDoPlayersBalanceTeams && PlayerController(Other) != none)
+		else if (Use_bPlayersBalanceTeams && PlayerController(Other) != none)
 		{
 			num = GetNextTeamIndex(false);
 		}
@@ -321,6 +342,13 @@ function OnBotDeath_PostCheck(Pawn Other, Actor Sender)
 // Private functions
 //**********************************************************************************
 
+function InitConfig()
+{
+	Use_bPlayersBalanceTeams = bPlayersBalanceTeams;
+	Use_PlayersVsBots = PlayersVsBots;
+	Use_BotRatio = BotRatio;
+}
+
 function int GetNextTeamIndex(bool bBot)
 {
 	local UTTeamInfo BotTeam;
@@ -330,7 +358,7 @@ function int GetNextTeamIndex(bool bBot)
 	local int i, index, count, prefer;
 	local array<int> PlayersCount, TeamsCount;
 	
-	if (PlayersVsBots && bBot)
+	if (Use_PlayersVsBots && bBot)
 	{
 		packagename = CacheGame.class.GetPackageName();
 		switch (packagename)
@@ -359,7 +387,7 @@ function int GetNextTeamIndex(bool bBot)
 		
 		return 1;
 	}
-	else if (PlayersVsBots)
+	else if (Use_PlayersVsBots)
 	{
 		// put net player into the given team
 		return PlayersSide;
@@ -372,7 +400,7 @@ function int GetNextTeamIndex(bool bBot)
 			count = MaxInt;
 			prefer = 0;
 			index = INDEX_NONE;
-			if (!bBot && bDoPlayersBalanceTeams)
+			if (!bBot && Use_bPlayersBalanceTeams)
 			{
 				// find team with lowest real player count
 				for ( i=0; i<PlayersCount.Length; i++)
@@ -602,7 +630,7 @@ function bool GetAdjustedTeamPlayerCount(out array<int> PlayersCount, out array<
 		count = WorldInfo.GRI.Teams[i].Size - PlayersCount[i];
 
 		// use botratio to know how many proper player a team would have
-		TeamsCount[i] = PlayersCount[i]*BotRatio + count;
+		TeamsCount[i] = PlayersCount[i]*Use_BotRatio + count;
 	}
 
 	return true;
