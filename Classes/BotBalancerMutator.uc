@@ -27,6 +27,11 @@ var private array<UTBot> BotsSetOrders;
 /** Used to track down spawned bots within the custom addbots code */
 var private array<UTBot> BotsSpawnedOnce;
 
+
+// ---=== Override config ===---
+
+var bool bDoPlayersBalanceTeams;
+
 //**********************************************************************************
 // Config
 //**********************************************************************************
@@ -36,6 +41,10 @@ var() config bool PlayersVsBots;
 var() config byte PlayersSide;
 var() config float BotRatio;
 var() config bool AllowTeamChangeVsBots;
+
+// ---=== UT3 override config ===---
+
+var() config bool bPlayersBalanceTeams;
 
 //**********************************************************************************
 // Inherited functions
@@ -49,6 +58,7 @@ function bool MutatorIsAllowed()
 
 function InitMutator(string Options, out string ErrorMessage)
 {
+	local string InOpt;
 	`Log(name$"::InitMutator - Options:"@Options,,'BotBalancer');
 	super.InitMutator(Options, ErrorMessage);
 
@@ -72,6 +82,16 @@ function InitMutator(string Options, out string ErrorMessage)
 	// override
 	//CacheGame.bPlayersVsBots = PlayersVsBots;
 	//CacheGame.BotRatio = BotRatio;
+
+	if (!class'GameInfo'.static.HasOption(Options, "BalanceTeams"))
+	{
+		bDoPlayersBalanceTeams = bPlayersBalanceTeams;
+	}
+	else
+	{
+		InOpt = class'GameInfo'.static.ParseOption(Options, "BalanceTeams");
+		bDoPlayersBalanceTeams = bool(InOpt);
+	}
 }
 
 // called when gameplay actually starts
@@ -228,6 +248,10 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 				num = GetNextTeamIndex(AIController(Other) != none);
 			}
 		}
+		else if (bDoPlayersBalanceTeams && PlayerController(Other) != none)
+		{
+			num = GetNextTeamIndex(false);
+		}
 	}
 
 	return True;
@@ -345,17 +369,32 @@ function int GetNextTeamIndex(bool bBot)
 	{
 		if (GetAdjustedTeamPlayerCount(PlayersCount, TeamsCount))
 		{
-			// find team with lowest real player count (prefer team with lower net players)
 			count = MaxInt;
 			prefer = 0;
 			index = INDEX_NONE;
-			for ( i=0; i<TeamsCount.Length; i++)
+			if (!bBot && bDoPlayersBalanceTeams)
 			{
-				if (TeamsCount[i] < count || (TeamsCount[i] == count && PlayersCount[i] < prefer))
+				// find team with lowest real player count
+				for ( i=0; i<PlayersCount.Length; i++)
 				{
-					count = TeamsCount[i];
-					prefer = PlayersCount[i];
-					index = i;
+					if (PlayersCount[i] < count)
+					{
+						count = PlayersCount[i];
+						index = i;
+					}
+				}
+			}
+			else
+			{
+				// find team with lowest calculated player count (prefer team with lower net players)
+				for ( i=0; i<TeamsCount.Length; i++)
+				{
+					if (TeamsCount[i] < count || (TeamsCount[i] == count && PlayersCount[i] < prefer))
+					{
+						count = TeamsCount[i];
+						prefer = PlayersCount[i];
+						index = i;
+					}
 				}
 			}
 
@@ -615,4 +654,7 @@ DefaultProperties
 	PlayersSide=0
 	BotRatio=2.0
 	AllowTeamChangeVsBots=false
+
+	// --- UT3 override config ---
+	bPlayersBalanceTeams=true
 }
