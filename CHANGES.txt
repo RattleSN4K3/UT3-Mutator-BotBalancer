@@ -1,0 +1,13 @@
+Alpha 2
+- Fixed: Bot orders could change when bots are added in midgame
+- Added: Balancing team on player enters/leaves or changes team
+- Added: Option to allow team change in Players vs. Bots mode
+- Added: Option to balance players teams
+- Added: Options like VsBots, BotRatio, BalanceTeams are parsed
+
+Alpha 1 - Initial release
+- Basic mutator 
+- Allow uneven bot teams in online games
+- Use level recommended player count for bots
+- Players vs. bots mode
+- Bot Ratio which allows to set a bot count for each player
