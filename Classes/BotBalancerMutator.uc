@@ -211,7 +211,7 @@ function ModifyPlayer(Pawn Other)
 
 	if (pd == none)
 	{
-		// attach helper which trigger events fro death. this is used to revert bSpawnedByKismet and set bForceAllRed
+		// attach helper which trigger events for death. this is used to revert bSpawnedByKismet and set bForceAllRed
 		pd = Other.Spawn(class'BotBalancerHelperPawnDeath');
 		pd.SetPlayerDeathDelegate(OnBotDeath_PreCheck, OnBotDeath_PostCheck);
 		pd.SetBase(Other);
@@ -381,11 +381,11 @@ function int GetNextTeamIndex(bool bBot)
 			else if (WorldInfo.GRI.Teams.Length > 2)
 			{
 				//@TODO: add support for MultiTeam (4-teams)
-				return PlayersSide;
+				return Rand(WorldInfo.GRI.Teams.Length);
 			}
 		}
 		
-		return 1;
+		return 255;
 	}
 	else if (Use_PlayersVsBots)
 	{
@@ -433,7 +433,7 @@ function int GetNextTeamIndex(bool bBot)
 			}
 		}
 
-		// use original algorthim to find proper team index
+		// use original algorithm to find proper team index
 		// to prevent using always the Red team, we swap that flag temporarily
 		bSwap = CacheGame.bForceAllRed;
 		CacheGame.bForceAllRed = false;

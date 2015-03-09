@@ -1,7 +1,7 @@
 BotBalancer
 ==========================
 
-A mutator for **Unreal Touranemnt 3** which balances the teams based on set conditions (Players vs. Bots, Bot-ratio, Map recommended players, ...).
+A mutator for **Unreal Tournament 3** which balances the teams based on set conditions (Players vs. Bots, Bot-ratio, Map recommended players, ...).
 
 
 # Install
