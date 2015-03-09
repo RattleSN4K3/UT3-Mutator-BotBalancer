@@ -14,7 +14,7 @@ class BotBalancerMutator extends UTMutator
 /** Readonly. Set when match has started (MatchStarting was called) */
 var bool bMatchStarted;
 
-var bool bForcDesiredPlayerCount;
+var bool bForceDesiredPlayerCount;
 var int DesiredPlayerCount;
 
 var bool bOriginalForceAllRed;
@@ -87,7 +87,7 @@ function MatchStarting()
 	{
 		CacheGame.bAutoNumBots = true;
 		DesiredPlayerCount = CacheGame.LevelRecommendedPlayers();
-		bForcDesiredPlayerCount = true;
+		bForceDesiredPlayerCount = true;
 	}
 	else if (CacheGame.HasOption(CacheGame.ServerOptions, "NumPlay"))
 	{
@@ -255,10 +255,10 @@ event TimerCheckPlayerCount()
 
 	if (CacheGame.DesiredPlayerCount != DesiredPlayerCount)
 	{
-		if (bForcDesiredPlayerCount)
+		if (bForceDesiredPlayerCount)
 		{
 			CacheGame.DesiredPlayerCount = DesiredPlayerCount;
-			bForcDesiredPlayerCount = false;
+			bForceDesiredPlayerCount = false;
 		}
 
 		// attempted to add bots through external code, use custom code now
