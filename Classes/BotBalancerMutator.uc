@@ -214,17 +214,17 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 {
 	if (super.AllowChangeTeam(Other, num, bNewTeam))
 	{
-		// disallow players changing team if PlayersVsBots is set
-		if (PlayersVsBots && PlayerController(Other) != none)
+		if (PlayersVsBots)
 		{
+			// disallow changing team if PlayersVsBots is set
 			if (bNewTeam && num != PlayersSide)
 			{
 				PlayerController(Other).ReceiveLocalizedMessage(class'UTTeamGameMessage', PlayersSide == 0 ? 1 : 2);
 				return false;
 			}
-			else if (!bNewTeam)
+			else if (!bNewTeam) // spawning player into the correct 
 			{
-				num = PlayersSide;
+				num = GetNextTeamIndex(AIController(Other));
 			}
 		}
 	}
@@ -333,6 +333,11 @@ function int GetNextTeamIndex(bool bBot)
 		}
 		
 		return 1;
+	}
+	else if (PlayersVsBots)
+	{
+		// put net player into the given team
+		return PlayersSide;
 	}
 
 	if (CacheGame != none)
