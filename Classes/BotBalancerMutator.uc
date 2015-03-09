@@ -35,6 +35,7 @@ var() config bool UseLevelRecommendation;
 var() config bool PlayersVsBots;
 var() config byte PlayersSide;
 var() config float BotRatio;
+var() config bool AllowTeamChangeVsBots;
 
 //**********************************************************************************
 // Inherited functions
@@ -217,7 +218,7 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 		if (PlayersVsBots)
 		{
 			// disallow changing team if PlayersVsBots is set
-			if (bNewTeam && num != PlayersSide)
+			if (bNewTeam && num != PlayersSide && !AllowTeamChangeVsBots)
 			{
 				PlayerController(Other).ReceiveLocalizedMessage(class'UTTeamGameMessage', PlayersSide == 0 ? 1 : 2);
 				return false;
@@ -613,4 +614,5 @@ DefaultProperties
 	PlayersVsBots=false
 	PlayersSide=0
 	BotRatio=2.0
+	AllowTeamChangeVsBots=false
 }
