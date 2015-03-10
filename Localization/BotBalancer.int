@@ -1,3 +1,27 @@
 [BotBalancerMutator UTUIDataProvider_Mutator]
 FriendlyName="BotBalancer"
 Description="Balances the teams based on set conditions (Players vs. Bots, Bot-ratio, Map recommended players, ...)"
+
+[BotBalancerMutatorSettings]
+PropertyMappings[0]=(ColumnHeaderText="Use Level Recommendation",ValueMappings=((Name="no "),(Name="yes ")))
+PropertyMappings[1]=(ColumnHeaderText="Players vs. Bots",ValueMappings=((Name="no "),(Name="yes ")))
+PropertyMappings[2]=(ColumnHeaderText="Player side (for Player vs. Bots)",ValueMappings=((Name="Random"),(Name="Red"),(Name="Blue"),(Name="Green"),(Name="Gold"),(Name="Unset")))
+PropertyMappings[3]=(ColumnHeaderText="Bot/Player Ratio")
+PropertyMappings[4]=(ColumnHeaderText="Allow Team Change (in Player vs. Bots)",ValueMappings=((Name="no "),(Name="yes ")))
+PropertyMappings[5]=(ColumnHeaderText="Players Balance Teams",ValueMappings=((Name="no "),(Name="yes ")))
+;
+PropertyDescriptions[0]="Whether to use the level recommended player count for each map. Once  this is set, the player count will be adjusted to what ever the map has defined as min and max player count. A mean value will be used as bot player count."
+PropertyDescriptions[1]="Whether to play a match with bots on one side (or multi sides with Multi-Team support) and humans players all in one team."
+PropertyDescriptions[2]="The player side in which all the human players will be put in when they connected. They can still change to the other side unless 'Allow Team Change' not allowed."
+PropertyDescriptions[3]="The number of bots to balance for each player in the oppoenent team. Basically this values represents how much player a human player results. A value of 2.0 would mean that a human player is as strong as 2 bots."
+PropertyDescriptions[4]="Whether to allow team changes for human player in Players vs. Bots mode. When this value is set, the any human player will be forced to play on the human side."
+PropertyDescriptions[5]="Joining players will join the team with the least players."
+
+[BotBalancerMutatorSettings Tooltips]
+UseLevelRecommendation="Whether to use the level recommended player count for each map. Once  this is set, the player count will be adjusted to what ever the map has defined as min and max player count. A mean value will be used as bot player count."
+PlayersVsBots="Whether to play a match with bots on one side (or multi sides with Multi-Team support) and humans players all in one team."
+PlayersSide="The player side in which all the human players will be put in when they connected. They can still change to the other side unless 'Allow Team Change' not allowed."
+BotRatio="The number of bots to balance for each player in the oppoenent team. Basically this values represents how much player a human player results. A value of 2.0 would mean that a human player is as strong as 2 bots."
+AllowTeamChangeVsBots="Whether to allow team changes for human player in Players vs. Bots mode. When this value is set, the any human player will be forced to play on the human side."
+bPlayersBalanceTeams="Joining players will join the team with the least players."
+
