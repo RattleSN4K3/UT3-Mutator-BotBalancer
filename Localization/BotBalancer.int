@@ -2,6 +2,9 @@
 FriendlyName="BotBalancer"
 Description="Balances the teams based on set conditions (Players vs. Bots, Bot-ratio, Map recommended players, ...)"
 
+[BotBalancerUIFrontendConfig]
+Title="Configure BotBalancer"
+
 [BotBalancerMutatorSettings]
 PropertyMappings[0]=(ColumnHeaderText="Use Level Recommendation",ValueMappings=((Name="no "),(Name="yes ")))
 PropertyMappings[1]=(ColumnHeaderText="Players vs. Bots",ValueMappings=((Name="no "),(Name="yes ")))
