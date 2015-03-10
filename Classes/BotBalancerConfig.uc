@@ -69,9 +69,10 @@ static final function BotBalancerConfig GetConfig()
 		cfg = GetConfig();
 		cfg.ResetConfig();
 		cfg.SaveConfig();
+		return "";
 	}
 
-	super.Localize(SectionName, KeyName, PackageName);
+	return super.Localize(SectionName, KeyName, PackageName);
 }
 
 //**********************************************************************************
