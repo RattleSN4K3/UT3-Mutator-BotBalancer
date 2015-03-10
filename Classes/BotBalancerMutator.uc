@@ -11,6 +11,9 @@ class BotBalancerMutator extends UTMutator
 // Workflow variables
 //**********************************************************************************
 
+/** Single instanced config instance which holds all the config variables */
+var BotBalancerConfig MyConfig;
+
 /** Readonly. Set when match has started (MatchStarting was called) */
 var bool bMatchStarted;
 
@@ -27,30 +30,21 @@ var private array<UTBot> BotsSetOrders;
 /** Used to track down spawned bots within the custom addbots code */
 var private array<UTBot> BotsSpawnedOnce;
 
-
 // ---=== Override config ===---
 
-var bool Use_bPlayersBalanceTeams;
-var bool Use_PlayersVsBots;
-var float Use_BotRatio;
-
-//**********************************************************************************
-// Config
-//**********************************************************************************
-
-var() config bool UseLevelRecommendation;
-var() config bool PlayersVsBots;
-var() config byte PlayersSide;
-var() config float BotRatio;
-var() config bool AllowTeamChangeVsBots;
-
-// ---=== UT3 override config ===---
-
-var() config bool bPlayersBalanceTeams;
+var bool bPlayersBalanceTeams;
+var bool PlayersVsBots;
+var float BotRatio;
 
 //**********************************************************************************
 // Inherited functions
 //**********************************************************************************
+
+event Destroyed()
+{
+	MyConfig = none;
+	super.Destroyed();
+}
 
 function bool MutatorIsAllowed()
 {
@@ -87,7 +81,7 @@ function InitMutator(string Options, out string ErrorMessage)
 	if (class'GameInfo'.static.HasOption(Options, "BalanceTeams"))
 	{
 		InOpt = class'GameInfo'.static.ParseOption(Options, "BalanceTeams");
-		Use_bPlayersBalanceTeams = bool(InOpt);
+		bPlayersBalanceTeams = bool(InOpt);
 	}
 }
 
@@ -102,7 +96,7 @@ function MatchStarting()
 	if (CacheGame == none)
 		return;
 
-	if (UseLevelRecommendation)
+	if (MyConfig.UseLevelRecommendation)
 	{
 		CacheGame.bAutoNumBots = true;
 		DesiredPlayerCount = CacheGame.LevelRecommendedPlayers();
@@ -126,12 +120,12 @@ function MatchStarting()
 		InOpt = class'GameInfo'.static.ParseOption(CacheGame.ServerOptions, "VsBots");
 		if (InOpt ~= "false" || InOpt ~= "true")
 		{
-			Use_PlayersVsBots = bool(InOpt);
+			PlayersVsBots = bool(InOpt);
 		}
 		else if (float(InOpt) > 0.0)
 		{
-			Use_PlayersVsBots = true;
-			Use_BotRatio = float(InOpt);
+			PlayersVsBots = true;
+			BotRatio = float(InOpt);
 		}
 	}
 
@@ -139,7 +133,7 @@ function MatchStarting()
 	if (class'GameInfo'.static.HasOption(CacheGame.ServerOptions, "BotRatio"))
 	{
 		InOpt = class'GameInfo'.static.ParseOption(CacheGame.ServerOptions, "BotRatio");
-		Use_BotRatio = float(InOpt);
+		BotRatio = float(InOpt);
 	}
 
 	bMatchStarted = true;
@@ -256,12 +250,12 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 {
 	if (super.AllowChangeTeam(Other, num, bNewTeam))
 	{
-		if (Use_PlayersVsBots)
+		if (PlayersVsBots)
 		{
 			// disallow changing team if PlayersVsBots is set
-			if (bNewTeam && num != PlayersSide && !AllowTeamChangeVsBots)
+			if (bNewTeam && num != MyConfig.PlayersSide && !MyConfig.AllowTeamChangeVsBots)
 			{
-				PlayerController(Other).ReceiveLocalizedMessage(class'UTTeamGameMessage', PlayersSide == 0 ? 1 : 2);
+				PlayerController(Other).ReceiveLocalizedMessage(class'UTTeamGameMessage', MyConfig.PlayersSide == 0 ? 1 : 2);
 				return false;
 			}
 			else if (!bNewTeam) // spawning player into the correct 
@@ -269,7 +263,7 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 				num = GetNextTeamIndex(AIController(Other) != none);
 			}
 		}
-		else if (Use_bPlayersBalanceTeams && PlayerController(Other) != none)
+		else if (bPlayersBalanceTeams && PlayerController(Other) != none)
 		{
 			num = GetNextTeamIndex(false);
 		}
@@ -344,9 +338,17 @@ function OnBotDeath_PostCheck(Pawn Other, Actor Sender)
 
 function InitConfig()
 {
-	Use_bPlayersBalanceTeams = bPlayersBalanceTeams;
-	Use_PlayersVsBots = PlayersVsBots;
-	Use_BotRatio = BotRatio;
+	`log(name$"::InitConfig",bShowDebug,'BotBalancer');
+
+	MyConfig = class'BotBalancerConfig'.static.GetConfig();
+	MyConfig.Validate();
+
+	MyConfig.SaveConfig();
+
+	// set runtime vars from config values
+	bPlayersBalanceTeams = MyConfig.bPlayersBalanceTeams;
+	PlayersVsBots = MyConfig.PlayersVsBots;
+	BotRatio = MyConfig.BotRatio;
 }
 
 function int GetNextTeamIndex(bool bBot)
@@ -358,7 +360,7 @@ function int GetNextTeamIndex(bool bBot)
 	local int i, index, count, prefer;
 	local array<int> PlayersCount, TeamsCount;
 	
-	if (Use_PlayersVsBots && bBot)
+	if (PlayersVsBots && bBot)
 	{
 		packagename = CacheGame.class.GetPackageName();
 		switch (packagename)
@@ -371,13 +373,13 @@ function int GetNextTeamIndex(bool bBot)
 				//@TODO: add support for Duel
 				return 0;
 			}
-			return Clamp(1 - PlayersSide, 0, 1);
+			return Clamp(1 - MyConfig.PlayersSide, 0, 1);
 			break;
 		default:
 			if (WorldInfo.GRI.Teams.Length == 1)
 				return WorldInfo.GRI.Teams[0].TeamIndex;
 			else if (WorldInfo.GRI.Teams.Length == 2)
-				return Clamp(1 - PlayersSide, 0, 1);
+				return Clamp(1 - MyConfig.PlayersSide, 0, 1);
 			else if (WorldInfo.GRI.Teams.Length > 2)
 			{
 				//@TODO: add support for MultiTeam (4-teams)
@@ -387,10 +389,10 @@ function int GetNextTeamIndex(bool bBot)
 		
 		return 255;
 	}
-	else if (Use_PlayersVsBots)
+	else if (PlayersVsBots)
 	{
 		// put net player into the given team
-		return PlayersSide;
+		return MyConfig.PlayersSide;
 	}
 
 	if (CacheGame != none)
@@ -400,7 +402,7 @@ function int GetNextTeamIndex(bool bBot)
 			count = MaxInt;
 			prefer = 0;
 			index = INDEX_NONE;
-			if (!bBot && Use_bPlayersBalanceTeams)
+			if (!bBot && bPlayersBalanceTeams)
 			{
 				// find team with lowest real player count
 				for ( i=0; i<PlayersCount.Length; i++)
@@ -630,7 +632,7 @@ function bool GetAdjustedTeamPlayerCount(out array<int> PlayersCount, out array<
 		count = WorldInfo.GRI.Teams[i].Size - PlayersCount[i];
 
 		// use botratio to know how many proper player a team would have
-		TeamsCount[i] = PlayersCount[i]*Use_BotRatio + count;
+		TeamsCount[i] = PlayersCount[i]*BotRatio + count;
 	}
 
 	return true;
@@ -674,15 +676,4 @@ DefaultProperties
 		bShowDebug=true
 		bDebugSwitchToSpectator=false
 	`endif
-
-	// --- Config ---
-	
-	UseLevelRecommendation=false
-	PlayersVsBots=false
-	PlayersSide=0
-	BotRatio=2.0
-	AllowTeamChangeVsBots=false
-
-	// --- UT3 override config ---
-	bPlayersBalanceTeams=true
 }
