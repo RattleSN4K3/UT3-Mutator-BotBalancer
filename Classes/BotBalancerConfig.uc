@@ -64,7 +64,7 @@ static final function BotBalancerConfig GetConfig()
 {
 	local BotBalancerConfig cfg;
 
-	if (SectionName ~= "WebAbdmin_ResetToDefaults" && KeyName == "" && PackageName == "")
+	if (SectionName ~= "WebAdmin_ResetToDefaults" && KeyName == "" && PackageName == "")
 	{
 		cfg = GetConfig();
 		cfg.ResetConfig();
