@@ -381,7 +381,7 @@ function Mutate(string MutateString, PlayerController Sender)
 	local int i;
 	local UTBot bot;
 
-	`Log(name$"::Mutate - MutateString:"@MutateString$" - Sender:"@Sender,,'NoMoreDemoGuy');
+	`Log(name$"::Mutate - MutateString:"@MutateString$" - Sender:"@Sender,,'BotBalancer');
 	super.Mutate(MutateString, Sender);
 
 	if (Sender == none)

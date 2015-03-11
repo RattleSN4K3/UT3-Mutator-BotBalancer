@@ -1,5 +1,21 @@
 class BotBalancerUIFrontendConfig extends UTUIFrontEnd;
 
+// Constants
+// -----------------
+
+Const SkinPath = "UI_Skin_Derived.UTDerivedSkin";
+
+//**********************************************************************************
+// Structs
+//**********************************************************************************
+
+struct SUIIdStringCollectionInfo
+{
+	var name Option;
+	var array<int> Ids;
+	var array<string> Names;
+};
+
 //**********************************************************************************
 // Variables
 //**********************************************************************************
@@ -10,6 +26,9 @@ var() transient localized string Title;
 // Workflow variables
 //'''''''''''''''''''''''''
 
+var transient bool bPendingClose;
+var transient bool bRegeneratingOptions;	// Used to detect when the options are being regenerated
+
 var transient array<SUIIdStringCollectionInfo> CollectionsIdStr;
 var transient UTUIDataStore_2DStringList StringDatastore;
 var() transient class<UTUIDataStore_2DStringList> StringDatastoreClass;
@@ -18,8 +37,6 @@ var() transient string DataFieldPrefix;
 
 var() transient class<Settings> SettingsClass;
 var() transient class<Object> ConfigClass;
-
-var transient bool bRegeneratingOptions;	// Used to detect when the options are being regenerated
 
 //'''''''''''''''''''''''''
 // UI element variables
@@ -32,6 +49,8 @@ var transient UTUIScene_MessageBox MessageBoxReference;
 var transient UTUITabPage_DynamicOptions OptionsPage;
 var transient UTUIDynamicOptionList OptionsList;
 
+var transient UISkin OriginalSkin;
+
 //**********************************************************************************
 // Inherited funtions
 //**********************************************************************************
@@ -41,6 +60,7 @@ event PostInitialize()
 {
 	`Log(name$"::PostInitialize",,'BotBalancer');
 
+	//AdjustSkin();
 	super.PostInitialize();
 
 	OptionsPage = UTUITabPage_DynamicOptions(FindChild('pnlOptions', True));
@@ -64,6 +84,10 @@ event SceneDeactivated()
 {
 	local int i;
 
+	// revert skin before we set the pending close flag otherwise it doesn't get reverted
+	//RevertSkin();
+	bPendingClose = true;
+
 	if (StringDatastore != none)
 	{
 		for (i=0; i<RegisteredDatafields.Length; i++)
@@ -74,6 +98,18 @@ event SceneDeactivated()
 	}
 
 	super.SceneDeactivated();
+}
+
+event NotifyGameSessionEnded()
+{
+	`Log(name$"::NotifyGameSessionEnded",,'BotBalancer');
+
+	bPendingClose = true;
+
+	// clear references
+	OriginalSkin = none;
+
+	super.NotifyGameSessionEnded();
 }
 
 /** Sets the title for this scene. */
@@ -596,11 +632,30 @@ function OnResetToDefaults()
 //{
 //	local UISkin Skin;
 
+	//if (bPendingClose)
+	//	return;
+
 //	// make sure we're using the right skin
-//	Skin = UISkin(DynamicLoadObject("UI_Skin_Derived.UTDerivedSkin",class'UISkin'));
+//	Skin = UISkin(DynamicLoadObject(SkinPath,class'UISkin'));
 //	if ( Skin != none )
 //	{
+		//if (OriginalSkin == none)
+		//{
+		//	OriginalSkin = SceneClient.ActiveSkin;
+		//}
 //		SceneClient.ChangeActiveSkin(Skin);
+//	}
+//}
+
+//function RevertSkin()
+//{
+//	if (bPendingClose)
+//		return;
+
+//	if (OriginalSkin != none)
+//	{
+//		SceneClient.ChangeActiveSkin(OriginalSkin);
+//		OriginalSkin = none;
 //	}
 //}
 
@@ -902,7 +957,7 @@ static final function bool SetOptionObjectValue(UIObject obj, string value, opti
 	CurNumEditBox = UINumericEditBox(obj);
 	if (CurNumEditBox != none)
 	{
-		floatvalue = class'NoMoreDemoGuy'.static.ParseFloat(value);
+		floatvalue = ParseFloat(value);
 		CurNumEditBox.SetNumericValue(floatvalue, true);
 		return true;
 	}
@@ -939,6 +994,16 @@ static final function bool SetOptionObjectValue(UIObject obj, string value, opti
 	//}
 
 	return false;
+}
+
+static function float ParseFloat(string value)
+{
+	if (InStr(value, ",", false) != INDEX_NONE)
+	{
+		value = Repl(value, ",", "."); 
+	}
+
+	return float(value);
 }
 
 defaultproperties
