@@ -311,24 +311,27 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 
 	if (super.AllowChangeTeam(Other, num, bNewTeam))
 	{
-		if (PlayersVsBots)
+		// disallow changing team if PlayersVsBots is set
+		if (PlayersVsBots && PlayerController(Other) != none && bNewTeam &&
+			num != PlayersSide && !MyConfig.AllowTeamChangeVsBots)
 		{
-			// disallow changing team if PlayersVsBots is set
-			if (bNewTeam && num != PlayersSide && !MyConfig.AllowTeamChangeVsBots)
-			{
-				//@TODO: add support for Multi-Team
-				PlayerController(Other).ReceiveLocalizedMessage(class'UTTeamGameMessage', PlayersSide == 0 ? 1 : 2);
-				return false;
-			}
-			else if (!bNewTeam) // spawning player into the correct 
-			{
-				num = GetNextTeamIndex(AIController(Other) != none);
-			}
+			//@TODO: add support for Multi-Team
+			PlayerController(Other).ReceiveLocalizedMessage(class'UTTeamGameMessage', PlayersSide == 0 ? 1 : 2);
+			return false;
 		}
-		else if (bPlayersBalanceTeams && PlayerController(Other) != none)
+	}
+
+	if (PlayersVsBots)
+	{
+		// spawning player/bot into the correct team
+		if (!bNewTeam) 
 		{
-			num = GetNextTeamIndex(false);
+			num = GetNextTeamIndex(AIController(Other) != none);
 		}
+	}
+	else if (bPlayersBalanceTeams && PlayerController(Other) != none)
+	{
+		num = GetNextTeamIndex(false);
 	}
 
 	return True;
