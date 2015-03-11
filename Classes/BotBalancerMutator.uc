@@ -165,7 +165,7 @@ function MatchStarting()
 	{
 		// clear desired player count which then uses
 		// the Game's desired value in the next timer
-		DesiredPlayerCount = 0;
+		DesiredPlayerCount = -1;
 	}
 	else
 	{
