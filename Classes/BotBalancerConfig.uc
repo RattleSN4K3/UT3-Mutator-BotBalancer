@@ -1,5 +1,5 @@
 class BotBalancerConfig extends Object
-	config(NoMoreDemoGuy)
+	config(BotBalancer)
 	perobjectconfig;
 
 `if(`notdefined(FINAL_RELEASE))
@@ -12,7 +12,7 @@ class BotBalancerConfig extends Object
 
 var() config bool UseLevelRecommendation;
 var() config bool PlayersVsBots;
-var() config byte PlayersSide;
+var() config int PlayersSide;
 var() config float BotRatio;
 var() config bool AllowTeamChangeVsBots;
 
@@ -114,7 +114,7 @@ function ResetConfig()
 
 	UseLevelRecommendation=false;
 	PlayersVsBots=false;
-	PlayersSide=0;
+	PlayersSide=-1;
 	BotRatio=2.0;
 	AllowTeamChangeVsBots=false;
 
@@ -247,7 +247,7 @@ DefaultProperties
 
 	UseLevelRecommendation=false
 	PlayersVsBots=false
-	PlayersSide=0
+	PlayersSide=-1
 	BotRatio=2.0
 	AllowTeamChangeVsBots=false
 

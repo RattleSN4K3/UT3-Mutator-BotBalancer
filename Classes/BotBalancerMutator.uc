@@ -8,8 +8,19 @@ class BotBalancerMutator extends UTMutator
 `endif
 
 //**********************************************************************************
+// Constant variables
+//**********************************************************************************
+
+var() const byte DEFAULT_TEAM_UNSET;
+var() const byte DEFAULT_TEAM_BOT;
+var() const byte DEFAULT_TEAM_PLAYER;
+
+//**********************************************************************************
 // Workflow variables
 //**********************************************************************************
+
+/** Set when GRI is initialized */
+var bool bGRIInitialized;
 
 /** Single instanced config instance which holds all the config variables */
 var BotBalancerConfig MyConfig;
@@ -36,6 +47,33 @@ var private array<UTBot> BotsSpawnedOnce;
 var bool bPlayersBalanceTeams;
 var bool PlayersVsBots;
 var float BotRatio;
+
+/** Team index. Always valid index to GRI.Teams. Never 255/unset */
+var byte PlayersSide;
+
+//**********************************************************************************
+// State for GRI initialization
+//**********************************************************************************
+
+auto state InitGRI
+{
+	function NotifyLogin(Controller NewPlayer)
+	{
+		`Log(name$"::NotifyLogin - NewPlayer:"@NewPlayer,,'BotBalancer');
+		global.NotifyLogin(NewPlayer);
+
+		// GRI related initialization
+		SetGRI(WorldInfo.GRI);
+	}
+	
+	function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
+	{
+		// GRI related initialization
+		SetGRI(WorldInfo.GRI);
+
+		return global.AllowChangeTeam(Other, num, bNewTeam);
+	}
+}
 
 //**********************************************************************************
 // Inherited functions
@@ -84,6 +122,26 @@ function InitMutator(string Options, out string ErrorMessage)
 		InOpt = class'GameInfo'.static.ParseOption(Options, "BalanceTeams");
 		bPlayersBalanceTeams = bool(InOpt);
 	}
+}
+
+// overridden. but not called. called manually
+function SetGRI(GameReplicationInfo GRI)
+{
+	if (GRI == none || bGRIInitialized)
+		return;
+
+	// set random team if desired
+	if (MyConfig.PlayersSide < 0)
+		PlayersSide = Rand(WorldInfo.GRI.Teams.Length);
+	else if (MyConfig.PlayersSide < WorldInfo.GRI.Teams.Length)
+		PlayersSide = MyConfig.PlayersSide;
+	//else if (MyConfig.PlayersSide < DEFAULT_TEAM_UNSET)
+	//	PlayersSide = DEFAULT_TEAM_PLAYER;
+	else
+		PlayersSide = DEFAULT_TEAM_PLAYER;
+
+	bGRIInitialized = true;
+	GotoState('');
 }
 
 // called when gameplay actually starts
@@ -249,14 +307,17 @@ function ModifyPlayer(Pawn Other)
 
 function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 {
+	//@TODO: @FIX: problem with changing player when bots are about to spawn which causes players being put into the 0 team (bForceAllRed is set)
+
 	if (super.AllowChangeTeam(Other, num, bNewTeam))
 	{
 		if (PlayersVsBots)
 		{
 			// disallow changing team if PlayersVsBots is set
-			if (bNewTeam && num != MyConfig.PlayersSide && !MyConfig.AllowTeamChangeVsBots)
+			if (bNewTeam && num != PlayersSide && !MyConfig.AllowTeamChangeVsBots)
 			{
-				PlayerController(Other).ReceiveLocalizedMessage(class'UTTeamGameMessage', MyConfig.PlayersSide == 0 ? 1 : 2);
+				//@TODO: add support for Multi-Team
+				PlayerController(Other).ReceiveLocalizedMessage(class'UTTeamGameMessage', PlayersSide == 0 ? 1 : 2);
 				return false;
 			}
 			else if (!bNewTeam) // spawning player into the correct 
@@ -420,17 +481,21 @@ function int GetNextTeamIndex(bool bBot)
 				//@TODO: add support for Duel
 				return 0;
 			}
-			return Clamp(1 - MyConfig.PlayersSide, 0, 1);
+
+			// stock games use 2 teams as max
+			return Clamp(1 - PlayersSide, 0, 1); // use opposite
 			break;
 		default:
 			if (WorldInfo.GRI.Teams.Length == 1)
 				return WorldInfo.GRI.Teams[0].TeamIndex;
 			else if (WorldInfo.GRI.Teams.Length == 2)
-				return Clamp(1 - MyConfig.PlayersSide, 0, 1);
+				return Clamp(1 - PlayersSide, 0, 1);
 			else if (WorldInfo.GRI.Teams.Length > 2)
 			{
-				//@TODO: add support for MultiTeam (4-teams)
-				return Rand(WorldInfo.GRI.Teams.Length);
+				// get team index from all teams but players team
+				count = WorldInfo.GRI.Teams.Length;
+				index = PlayersSide + Rand(count-1) % count;
+				return index;
 			}
 		}
 		
@@ -439,7 +504,7 @@ function int GetNextTeamIndex(bool bBot)
 	else if (PlayersVsBots)
 	{
 		// put net player into the given team
-		return MyConfig.PlayersSide;
+		return PlayersSide;
 	}
 
 	if (CacheGame != none)
@@ -743,4 +808,8 @@ DefaultProperties
 		bShowDebug=true
 		bDebugSwitchToSpectator=false
 	`endif
+
+	DEFAULT_TEAM_BOT=1
+	DEFAULT_TEAM_PLAYER=0
+	DEFAULT_TEAM_UNSET=255
 }
