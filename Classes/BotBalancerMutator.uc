@@ -1,5 +1,4 @@
-class BotBalancerMutator extends UTMutator
-	config(BotBalancer);
+class BotBalancerMutator extends UTMutator;
 
 `if(`notdefined(FINAL_RELEASE))
 	var bool bShowDebug;
