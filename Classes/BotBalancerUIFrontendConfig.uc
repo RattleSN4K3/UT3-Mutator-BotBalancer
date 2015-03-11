@@ -4,14 +4,20 @@ class BotBalancerUIFrontendConfig extends UTUIFrontEnd;
 // Variables
 //**********************************************************************************
 
-var transient localized string Title;
+var() transient localized string Title;
 
 //'''''''''''''''''''''''''
 // Workflow variables
 //'''''''''''''''''''''''''
 
-var transient class<Settings> SettingsClass;
-var transient class<Object> ConfigClass;
+var transient array<SUIIdStringCollectionInfo> CollectionsIdStr;
+var transient UTUIDataStore_2DStringList StringDatastore;
+var() transient class<UTUIDataStore_2DStringList> StringDatastoreClass;
+var transient array<name> RegisteredDatafields;
+var() transient string DataFieldPrefix;
+
+var() transient class<Settings> SettingsClass;
+var() transient class<Object> ConfigClass;
 
 var transient bool bRegeneratingOptions;	// Used to detect when the options are being regenerated
 
@@ -43,6 +49,31 @@ event PostInitialize()
 	OptionsList = UTUIDynamicOptionList(FindChild('lstOptions', True));
 
 	SetupMenuOptions();
+}
+
+/** Scene activated event, sets up the title for the scene. */
+event SceneActivated(bool bInitialActivation)
+{
+	Super.SceneActivated(bInitialActivation);
+
+	FocusList();
+}
+
+/** Called just after this scene is removed from the active scenes array */
+event SceneDeactivated()
+{
+	local int i;
+
+	if (StringDatastore != none)
+	{
+		for (i=0; i<RegisteredDatafields.Length; i++)
+		{
+			StringDatastore.RemoveField(RegisteredDatafields[i]);
+		}
+		StringDatastore = none;
+	}
+
+	super.SceneDeactivated();
 }
 
 /** Sets the title for this scene. */
@@ -80,7 +111,6 @@ function SetupButtonBar()
 		ButtonBar.AppendButton("<Strings:UTGameUI.ButtonCallouts.ResetToDefaults>", OnButtonBar_ResetToDefaults);
 	}
 }
-
 
 /**
  * Provides a hook for unrealscript to respond to input using actual input key names (i.e. Left, Tab, etc.)
@@ -124,170 +154,91 @@ function bool HandleInputKey( const out InputEventParameters EventParms )
 }
 
 //**********************************************************************************
-// Delegate callbacks
-//**********************************************************************************
-
-/** Button bar callbacks */
-function bool OnButtonBar_Accept(UIScreenObject InButton, int PlayerIndex)
-{
-	`Log(name$"::OnButtonBar_Accept - InButton:"@InButton$" - PlayerIndex:"@PlayerIndex,,'BotBalancer');
-
-	OnAccept();
-	CloseScene(Self);
-
-	return true;
-}
-
-function bool OnButtonBar_Back(UIScreenObject InButton, int PlayerIndex)
-{
-	`Log(name$"::OnButtonBar_Back - InButton:"@InButton$" - PlayerIndex:"@PlayerIndex,,'BotBalancer');
-	OnBack();
-
-	return true;
-}
-
-/** Buttonbar Callback. */
-function bool OnButtonBar_ResetToDefaults(UIScreenObject InButton, int InPlayerIndex)
-{
-	`Log(name$"::OnButtonBar_ResetToDefaults - InButton:"@InButton$" - InPlayerIndex:"@InPlayerIndex,,'BotBalancer');
-	OnResetToDefaults();
-
-	return true;
-}
-
-/**
- * Callback for the reset to defaults confirmation dialog box.
- *
- * @param SelectionIdx	Selected item
- * @param PlayerIndex	Index of player that performed the action.
- */
-function OnResetToDefaults_Confirm(UTUIScene_MessageBox MessageBox, int SelectionIdx, int PlayerIndex)
-{
-	`Log(name$"::OnResetToDefaults_Confirm - MessageBox:"@MessageBox$" - SelectionIdx:"@SelectionIdx$" - PlayerIndex:"@PlayerIndex,,'BotBalancer');
-
-	if(SelectionIdx==0)
-	{
-		ResetToDefaults();
-		CloseScene(self);
-	}
-	else
-	{
-		OptionsPage.OptionList.SetFocus(none);
-	}
-}
-
-//**********************************************************************************
-// Button functions
-//**********************************************************************************
-
-function OnBack()
-{
-	`Log(name$"::OnBack",,'BotBalancer');
-	CloseScene(self);
-}
-
-function OnAccept()
-{
-	local UIObject CurObject;
-	local UICheckbox CurCheckBox;
-	//local UIEditBox CurEditBox;
-	local int i;
-	local name n;
-	local string value;
-	local bool boolvalue;
-
-	local Settings SettingsObj;
-
-	`Log(name$"::OnAccept",,'BotBalancer');
-
-	SettingsObj = new SettingsClass;
-	SettingsObj.SetSpecialValue('WebAdmin_Init', "");
-	for (i=0; i<SettingsObj.PropertyMappings.Length; i++) 
-	{
-		n = SettingsObj.PropertyMappings[i].Name;
-		if (FindOptionObjectByName(OptionsList, n, CurObject))
-		{
-			CurCheckBox = UICheckbox(CurObject);
-			if (CurCheckBox != none)
-			{
-				boolvalue = CurCheckBox.IsChecked();
-				value = string(int(boolvalue));
-				SettingsObj.SetPropertyFromStringByName(n, value);
-				continue;
-			}
-		}
-	}
-
-	`Log(name$"::OnAccept - Save config",,'BotBalancer');
-	SettingsObj.SetSpecialValue('WebAdmin_Save', "");
-}
-
-/** Reset to defaults callback. */
-function OnResetToDefaults()
-{
-	local array<string> MessageBoxOptions;
-
-	`Log(name$"::OnResetToDefaults",,'BotBalancer');
-
-	MessageBoxReference = GetMessageBoxScene();
-
-	if(MessageBoxReference != none)
-	{
-		MessageBoxOptions.AddItem("<Strings:UTGameUI.ButtonCallouts.ResetToDefaultAccept>");
-		MessageBoxOptions.AddItem("<Strings:UTGameUI.ButtonCallouts.Cancel>");
-
-		MessageBoxReference.SetPotentialOptions(MessageBoxOptions);
-		MessageBoxReference.Display("<Strings:UTGameUI.MessageBox.ResetToDefaults_Message>", "<Strings:UTGameUI.MessageBox.ResetToDefaults_Title>", OnResetToDefaults_Confirm, 1);
-	}
-}
-
-//function AdjustSkin()
-//{
-//	local UISkin Skin;
-
-//	// make sure we're using the right skin
-//	Skin = UISkin(DynamicLoadObject("UI_Skin_Derived.UTDerivedSkin",class'UISkin'));
-//	if ( Skin != none )
-//	{
-//		SceneClient.ChangeActiveSkin(Skin);
-//	}
-//}
-
-//**********************************************************************************
 // Init funtions
 //**********************************************************************************
 
-function string GetFriendlyNameOfSetting(name PropertyName)
+// Initializes the menu option templates, and regenerates the option list
+function SetupMenuOptions()
 {
-	local string ret;
-	local int index;
-	index = SettingsClass.default.PropertyMappings.Find('Name', PropertyName);
-	if (index != INDEX_NONE)
-		ret = SettingsClass.default.PropertyMappings[index].ColumnHeaderText;
+	local DynamicMenuOption CurMenuOpt, EmptyMenuOpt;
+	local int i;
+	local name n;
 
-	return ret;
-}
+	`Log(name$"::SetupMenuOptions",,'BotBalancer');
 
-function string GetDescriptionOfSetting(name PropertyName)
-{
-	local string ret;
-	local Settings Setts;
-	local string str;
+	if (OptionsPage == none || OptionsList == none)
+		return;
 
-	ret = Localize(SettingsClass.name$" Tooltips", string(PropertyName), string(SettingsClass.GetPackageName()));
-	if (Left(ret, 1) == "?")
+	bRegeneratingOptions = True;
+	OptionsList.DynamicOptionTemplates.Length = 0;
+
+	for (i=0; i<SettingsClass.default.PropertyMappings.Length; i++) 
 	{
-		ret = "";
+		n = SettingsClass.default.PropertyMappings[i].Name;
 
-		Setts = new SettingsClass;
-		if (Setts != none)
+		CurMenuOpt = EmptyMenuOpt;
+		CurMenuOpt.OptionName = n;
+		CurMenuOpt.OptionType = UTOT_CheckBox;
+		CurMenuOpt.FriendlyName = SettingsClass.default.PropertyMappings[i].ColumnHeaderText;
+		CurMenuOpt.Description = GetDescriptionOfSetting(n);
+
+		if (PopulateMenuOption(n, CurMenuOpt))
 		{
-			str = "PropertyDescription"$"_"$PropertyName;
-			ret = Setts.GetSpecialValue(name(str));
+			OptionsList.DynamicOptionTemplates.AddItem(CurMenuOpt);
 		}
 	}
-	
-	return ret;
+
+	// Generate the option controls
+	i = OptionsList.CurrentIndex;
+
+	OptionsList.OnSetupOptionBindings = SetupOptionBindings;
+	OptionsList.RegenerateOptions();
+
+	// If the list index was set, return to the previous position
+	FocusList(i);
+}
+
+// Setup the data source bindings (but not the values)
+function SetupOptionBindings()
+{
+	local UIObject CurObject;
+	local int i;
+	local name n;
+	local string value, newvalue;
+
+	local Settings SettingsObj;
+	local int PropertyId;
+
+	`Log(name$"::SetupOptionBindings",,'BotBalancer');
+
+	SettingsObj = new SettingsClass;
+	SettingsObj.SetSpecialValue('WebAdmin_Init', "");
+
+	// Generate list collections
+	for (i=0; i<OptionsList.GeneratedObjects.Length; i++)
+	{
+		PopulateMenuObject(OptionsList.GeneratedObjects[i]);
+	}
+
+	// Set values to menu items
+	for (i=0; i<SettingsObj.PropertyMappings.Length; i++) 
+	{
+		n = SettingsObj.PropertyMappings[i].Name;
+		if (SettingsObj.GetPropertyId(n, PropertyId) &&
+			SettingsObj.HasProperty(PropertyId) &&
+			FindOptionObjectByName(OptionsList, n, CurObject))
+		{
+			value = SettingsObj.GetPropertyAsString(PropertyId);
+			if (GetCollectionIndexValue(n, value, newvalue))
+			{
+				value = newvalue;
+			}
+
+			SetOptionObjectValue(CurObject, value);
+		}
+	}
+
+	bRegeneratingOptions = False;
 }
 
 function bool PopulateMenuOption(name PropertyName, out DynamicMenuOption menuopt)
@@ -346,12 +297,60 @@ function bool PopulateMenuOption(name PropertyName, out DynamicMenuOption menuop
 			case SDT_Int32:
 				if (prop_mapping.MappingType == PVMT_IDMapped)
 				{
-					if (prop_mapping.ValueMappings.Length == 2)
+					if (prop_mapping.ValueMappings.Length <= 2)
 					{
 						menuopt.OptionType = UTOT_CheckBox;
 						ret = true;
 					}
+					else if (prop_mapping.ValueMappings.Length == 0)
+					{
+						menuopt.OptionType = UTOT_CheckBox;
+						ret = true;
+					}
+					else
+					{
+						// more than 2
+						menuopt.OptionType = UTOT_ComboReadOnly;
+
+						//menuopt.OptionType = UTOT_Slider;
+						//menuopt.RangeData = EmptyRange;
+						//menuopt.RangeData.MinValue = 0;
+						//menuopt.RangeData.MaxValue = prop_mapping.ValueMappings.Length-1;
+						//menuopt.RangeData.bIntRange = true;
+						ret = true;
+					}
 				}
+				//else if (prop_mapping.MappingType == PVMT_Ranged)
+				//{
+				//	menuopt.OptionType = UTOT_Slider;
+				//	menuopt.RangeData = EmptyRange;
+				//	menuopt.RangeData.MinValue = prop_mapping.MinVal;
+				//	menuopt.RangeData.MaxValue = prop_mapping.MaxVal;
+				//	menuopt.RangeData.bIntRange = true;
+
+				//	menuopt.RangeData.NudgeValue = prop_mapping.RangeIncrement;
+				//	ret = true;
+				//}
+				else if (prop_mapping.MappingType == PVMT_Ranged)
+				{
+					menuopt.OptionType = UTOT_Spinner;
+					menuopt.RangeData = EmptyRange;
+					menuopt.RangeData.MinValue = prop_mapping.MinVal;
+					menuopt.RangeData.MaxValue = prop_mapping.MaxVal;
+					menuopt.RangeData.NudgeValue = prop_mapping.RangeIncrement;
+					menuopt.RangeData.bIntRange = true;
+					ret = true;
+				}
+
+				// PVMT_RawValue
+				else
+				{
+					menuopt.OptionType = UTOT_EditBox;
+					menuopt.EditboxAllowedChars = CHARSET_NumericOnly;
+
+					ret = true;
+				}
+
 				break;
 			case SDT_Float:
 				if (prop_mapping.MappingType == PVMT_RawValue || prop_mapping.MappingType == PVMT_Ranged)
@@ -372,9 +371,286 @@ function bool PopulateMenuOption(name PropertyName, out DynamicMenuOption menuop
 				
 				break;
 
+			case SDT_Int64:
+				if (prop_mapping.MappingType == PVMT_IDMapped)
+				{
+					if (prop_mapping.ValueMappings.Length < 2)
+					{
+						menuopt.OptionType = UTOT_CheckBox;
+						ret = true;
+					}
+					else
+					{
+						menuopt.OptionType = UTOT_ComboReadOnly;
+						ret = true;
+					}
+				}
+				else
+				{
+					menuopt.OptionType = UTOT_EditBox;
+					menuopt.EditboxAllowedChars = CHARSET_NumericOnly;
+
+					ret = true;
+				}
+				break;
+
 		}
 	}
 	
+	return ret;
+}
+
+function bool PopulateMenuObject(GeneratedObjectInfo OI)
+{
+	local UIComboBox CurComboBox;
+	//local UISlider CurSlider;
+	local UIEditBox CurEditBox;
+	local UILabel CurLabel;
+	local int i;
+	local array<int> arrids;
+	local array<string> arrnames;
+	local string markupstring;
+
+	if (Left(OI.OptionProviderName, 9) ~= "Separator")
+	{
+		// DOES NOT WORK WITH SCROLLING
+		//OI.OptionObj.SetVisibility(false);
+
+		CurEditBox = UIEditBox(OI.OptionObj);
+		if (CurEditBox != none)
+		{
+			CurEditBox.BackgroundImageComponent.SetOpacity(0.0);
+			CurEditBox.StringRenderComponent.SetOpacity(0.0);
+			CurEditBox.SetReadOnly(true);
+
+			// DOES NOT WORK; SAME EFFECT AS SetVisibility(false)
+			//CurEditBox.SetPrivateBehavior(PRIVATE_NotFocusable, true);
+		}
+
+		CurLabel = UILabel(OI.LabelObj);
+		if (CurLabel != none)
+		{
+			CurLabel.SetTextAlignment(UIALIGN_Center, UIALIGN_Right);
+			CurLabel.SetWidgetStyleByName('String Style', 'SceneTitles01'); //ToolTips
+		}
+		return true;
+	}
+
+	CurComboBox = UIComboBox(OI.OptionObj);
+	if (UIComboBox(OI.OptionObj) != none && GetSettingsCollection(OI.OptionProviderName, arrids, arrnames))
+	{
+		markupstring = CreateDataStoreStringList(OI.OptionProviderName, arrnames);
+		CurComboBox.ComboList.SetDataStoreBinding(markupstring);
+		CurComboBox.ComboList.RefreshSubscriberValue();
+
+		i = CollectionsIdStr.Length;
+		CollectionsIdStr.Add(1);
+
+		CollectionsIdStr[i].Ids = arrids;
+		CollectionsIdStr[i].Names = arrnames;
+		CollectionsIdStr[i].Option = OI.OptionProviderName;
+		return true;
+	}
+
+	// DOES NOT WORK
+
+	//CurSlider = UISlider(OI.OptionObj);
+	//if (CurSlider != none && GetSettingsCollection(OI.OptionProviderName, arrids, arrnames))
+	//{
+	//	markupstring = CreateDataStoreStringList(OI.OptionProviderName, arrnames);
+	//	CurSlider.DataSource.
+	//	CurSlider.SetDataStoreBinding(markupstring);
+	//	CurSlider.RefreshSubscriberValue();
+
+	//	i = CollectionsIdStr.Length;
+	//	CollectionsIdStr.Add(1);
+
+	//	CollectionsIdStr[i].Ids = arrids;
+	//	CollectionsIdStr[i].Names = arrnames;
+	//	CollectionsIdStr[i].Option = OI.OptionProviderName;
+	//	return true;
+	//}
+
+	return false;
+}
+
+//**********************************************************************************
+// UI callbacks
+//**********************************************************************************
+
+/** Button bar callbacks */
+function bool OnButtonBar_Accept(UIScreenObject InButton, int PlayerIndex)
+{
+	`Log(name$"::OnButtonBar_Accept - InButton:"@InButton$" - PlayerIndex:"@PlayerIndex,,'BotBalancer');
+
+	OnAccept();
+	CloseScene(Self);
+
+	return true;
+}
+
+function bool OnButtonBar_Back(UIScreenObject InButton, int PlayerIndex)
+{
+	`Log(name$"::OnButtonBar_Back - InButton:"@InButton$" - PlayerIndex:"@PlayerIndex,,'BotBalancer');
+	OnBack();
+
+	return true;
+}
+
+/** Buttonbar Callback. */
+function bool OnButtonBar_ResetToDefaults(UIScreenObject InButton, int InPlayerIndex)
+{
+	`Log(name$"::OnButtonBar_ResetToDefaults - InButton:"@InButton$" - InPlayerIndex:"@InPlayerIndex,,'BotBalancer');
+	OnResetToDefaults();
+
+	return true;
+}
+
+/**
+ * Callback for the reset to defaults confirmation dialog box.
+ *
+ * @param SelectionIdx	Selected item
+ * @param PlayerIndex	Index of player that performed the action.
+ */
+function OnResetToDefaults_Confirm(UTUIScene_MessageBox MessageBox, int SelectionIdx, int PlayerIndex)
+{
+	`Log(name$"::OnResetToDefaults_Confirm - MessageBox:"@MessageBox$" - SelectionIdx:"@SelectionIdx$" - PlayerIndex:"@PlayerIndex,,'BotBalancer');
+
+	if(SelectionIdx==0)
+	{
+		ResetToDefaults();
+		CloseScene(self);
+	}
+	else if (OptionsPage != none)
+	{
+		OptionsPage.OptionList.SetFocus(none);
+	}
+}
+
+//**********************************************************************************
+// Button functions
+//**********************************************************************************
+
+function OnBack()
+{
+	`Log(name$"::OnBack",,'BotBalancer');
+	CloseScene(self);
+}
+
+function OnAccept()
+{
+	local UIObject CurObject;
+	local int i;
+	local name n;
+	local string value, newvalue;
+
+	local Settings SettingsObj;
+
+	`Log(name$"::OnAccept",,'BotBalancer');
+
+	SettingsObj = new SettingsClass;
+	SettingsObj.SetSpecialValue('WebAdmin_Init', "");
+	for (i=0; i<SettingsObj.PropertyMappings.Length; i++) 
+	{
+		n = SettingsObj.PropertyMappings[i].Name;
+		if (FindOptionObjectByName(OptionsList, n, CurObject) &&
+			GetOptionObjectValue(CurObject, value))
+		{
+			if (GetCollectionIndexId(n, value, newvalue))
+			{
+				value = newvalue;
+			}
+
+			SettingsObj.SetPropertyFromStringByName(n, value);
+		}
+	}
+
+	`Log(name$"::OnAccept - Save config",,'BotBalancer');
+	SettingsObj.SetSpecialValue('WebAdmin_Save', "");
+}
+
+/** Reset to defaults callback. */
+function OnResetToDefaults()
+{
+	local array<string> MessageBoxOptions;
+
+	`Log(name$"::OnResetToDefaults",,'BotBalancer');
+
+	MessageBoxReference = GetMessageBoxScene();
+
+	if(MessageBoxReference != none)
+	{
+		MessageBoxOptions.AddItem("<Strings:UTGameUI.ButtonCallouts.ResetToDefaultAccept>");
+		MessageBoxOptions.AddItem("<Strings:UTGameUI.ButtonCallouts.Cancel>");
+
+		MessageBoxReference.SetPotentialOptions(MessageBoxOptions);
+		MessageBoxReference.Display("<Strings:UTGameUI.MessageBox.ResetToDefaults_Message>", "<Strings:UTGameUI.MessageBox.ResetToDefaults_Title>", OnResetToDefaults_Confirm, 1);
+	}
+}
+
+//**********************************************************************************
+// UI functions
+//**********************************************************************************
+
+//function AdjustSkin()
+//{
+//	local UISkin Skin;
+
+//	// make sure we're using the right skin
+//	Skin = UISkin(DynamicLoadObject("UI_Skin_Derived.UTDerivedSkin",class'UISkin'));
+//	if ( Skin != none )
+//	{
+//		SceneClient.ChangeActiveSkin(Skin);
+//	}
+//}
+
+function FocusList(optional int index = INDEX_NONE)
+{
+	local int i;
+
+	if (OptionsList == none)
+		return;
+
+	if (index == INDEX_NONE)
+		index = 0;
+	
+	// find element which is not a separator
+	for (i=index; i<OptionsList.GeneratedObjects.Length; i++)
+	{
+		if (Left(OptionsList.GeneratedObjects[i].OptionProviderName, 9) ~= "Separator") continue;
+
+		index = i;
+		break;
+	}
+	
+	OptionsList.GeneratedObjects[index].OptionObj.SetFocus(None);
+
+	// Disable the initiated selection change animation, so that it jumps to the focused object immediately
+	OptionsList.bAnimatingBGPrefab = False;
+}
+
+function string GetDescriptionOfSetting(name PropertyName, optional Settings Setts)
+{
+	local string ret;
+	local string str;
+
+	ret = Localize(SettingsClass.name$" Tooltips", string(PropertyName), string(class.GetPackageName()));
+	if (Len(ret) == 0 || Left(ret, 1) == "?")
+	{
+		ret = "";
+
+		if (Setts == none)
+		{
+			Setts = new SettingsClass;
+		}
+
+		if (Setts != none)
+		{
+			str = "PropertyDescription"$"_"$PropertyName;
+			ret = Setts.GetSpecialValue(name(str));
+		}
+	}
+
 	return ret;
 }
 
@@ -395,92 +671,80 @@ function bool GetSettingsProperties(name PropertyName, out SettingsProperty out_
 	return false;
 }
 
-// Initializes the menu option templates, and regenerates the option list
-function SetupMenuOptions()
+function bool GetSettingsCollection(name PropertyName, out array<int> out_ids, out array<string> out_names)
 {
-	local DynamicMenuOption CurMenuOpt, EmptyMenuOpt;
+	local SettingsProperty prop;
+	local SettingsPropertyPropertyMetaData prop_mapping;
 	local int i;
-	local name n;
+	local string str;
 
-	`Log(name$"::SetupMenuOptions",,'BotBalancer');
-
-	if (OptionsPage == none || OptionsList == none)
-		return;
-
-	bRegeneratingOptions = True;
-	OptionsList.DynamicOptionTemplates.Length = 0;
-
-	for (i=0; i<SettingsClass.default.PropertyMappings.Length; i++) 
+	if (GetSettingsProperties(PropertyName, prop, prop_mapping))
 	{
-		n = SettingsClass.default.PropertyMappings[i].Name;
-
-		CurMenuOpt = EmptyMenuOpt;
-		CurMenuOpt.OptionName = n;
-		CurMenuOpt.OptionType = UTOT_CheckBox;
-		CurMenuOpt.FriendlyName = SettingsClass.default.PropertyMappings[i].ColumnHeaderText;
-		CurMenuOpt.Description = GetDescriptionOfSetting(n);
-
-		OptionsList.DynamicOptionTemplates.AddItem(CurMenuOpt);
-	}
-
-	// Generate the option controls
-	i = OptionsList.CurrentIndex;
-
-	OptionsList.OnSetupOptionBindings = SetupOptionBindings;
-	OptionsList.RegenerateOptions();
-
-	// If the list index was set, return to the previous position
-	if (i != INDEX_NONE)
-	{
-		i = Clamp(i, 0, OptionsList.GeneratedObjects.Length-1);
-		OptionsList.GeneratedObjects[i].OptionObj.SetFocus(None);
-
-		// Disable the initiated selection change animation, so that it jumps to the focused object immediately
-		OptionsList.bAnimatingBGPrefab = False;
-	}
-}
-
-// Setup the data source bindings (but not the values)
-function SetupOptionBindings()
-{
-	local UICheckbox CurCheckBox;
-	//local UIEditBox CurEditBox;
-	local UIObject CurObject;
-	local int i;
-	local name n;
-	local string value;
-	local bool boolvalue;
-
-	local Settings SettingsObj;
-	local int PropertyId;
-
-	`Log(name$"::SetupOptionBindings",,'BotBalancer');
-
-	SettingsObj = new SettingsClass;
-	SettingsObj.SetSpecialValue('WebAdmin_Init', "");
-	for (i=0; i<SettingsObj.PropertyMappings.Length; i++) 
-	{
-		n = SettingsObj.PropertyMappings[i].Name;
-		if (SettingsObj.GetPropertyId(n, PropertyId) &&
-			SettingsObj.HasProperty(PropertyId) &&
-			FindOptionObjectByName(OptionsList, n, CurObject))
+		out_ids.Length = 0;
+		out_names.Length = 0;
+		for (i=0; i<prop_mapping.ValueMappings.Length; i++)
 		{
-			value = SettingsObj.GetPropertyAsString(PropertyId);
+			out_ids.AddItem(prop_mapping.ValueMappings[i].Id);
 
-			CurCheckBox = UICheckbox(CurObject);
-			if (CurCheckBox != none)
-			{
-				`Log(name$"::SetupOptionBindings - Set to checkbox",,'BotBalancer');
-				boolvalue = bool(value);
-				CurCheckBox.SetValue(boolvalue);
-				continue;
-			}
+			str = string(prop_mapping.ValueMappings[i].Name);
+			out_names.AddItem(str);
 		}
+		return true;
 	}
 
-	bRegeneratingOptions = False;
+	return false;
 }
 
+function bool GetCollectionName(name PropertyName, string str_index, out string out_value)
+{
+	local int index, i;
+	index = CollectionsIdStr.Find('Option', PropertyName);
+	if (index != INDEX_NONE)
+	{
+		i = int(str_index);
+		if (i >= INDEX_NONE && i < CollectionsIdStr[index].Names.Length)
+		{
+			out_value = CollectionsIdStr[index].Names[i];
+			return true;
+		}			
+	}
+
+	return false;
+}
+
+function bool GetCollectionIndexValue(name PropertyName, string str_index, out string out_value)
+{
+	local int index, i;
+	index = CollectionsIdStr.Find('Option', PropertyName);
+	if (index != INDEX_NONE)
+	{
+		i = CollectionsIdStr[index].Ids.Find(int(str_index));
+		if (i != INDEX_NONE)
+		{
+			out_value = CollectionsIdStr[index].Names[i];
+			return true;
+		}				
+	}
+
+	return false;
+}
+
+function bool GetCollectionIndexId(name PropertyName, string value, out string out_id)
+{
+	local int index, i;
+	index = CollectionsIdStr.Find('Option', PropertyName);
+	if (index != INDEX_NONE)
+	{
+		i = CollectionsIdStr[index].Names.Find(value);
+		if (i != INDEX_NONE)
+		{
+			out_id = ""$CollectionsIdStr[index].Ids[i];
+			return true;
+		}				
+	}
+
+	return false;
+}
 
 //**********************************************************************************
 // Private functions
@@ -492,6 +756,42 @@ function ResetToDefaults()
 
 	ConfigClass.static.Localize("WebAdmin_ResetToDefaults", "", "");
 	ConfigClass.static.StaticSaveConfig();
+}
+
+function string CreateDataStoreStringList(name listname, array<string> entries)
+{
+	local DataStoreClient DSC;
+	local string fieldstr, ret;
+	local name fieldname;
+	local int i;
+
+	// Get a reference to (or create) a 2D string list data store
+	DSC = Class'UIInteraction'.static.GetDataStoreClient();
+
+	if (StringDatastore == none)
+	{
+		StringDatastore = UTUIDataStore_2DStringList(DSC.FindDataStore(StringDatastoreClass.default.Tag));
+		if (StringDatastore == none)
+		{
+			StringDatastore = DSC.CreateDataStore(StringDatastoreClass);
+			DSC.RegisterDataStore(StringDatastore);
+		}
+	}
+
+	fieldstr = DataFieldPrefix$listname;
+	fieldname = name(fieldstr);
+	// Setup and fill the data fields within the data store (if they are not already set)
+	if (StringDatastore.GetFieldIndex(fieldname) == INDEX_None)
+	{
+		i = StringDataStore.AddField(fieldname);
+		StringDatastore.AddFieldList(i, listname);
+		StringDataStore.UpdateFieldList(i, listname, entries);
+
+		RegisteredDatafields.AddItem(fieldname);
+	}
+
+	ret = "<"$StringDatastore.Tag$":"$fieldname$">";
+	return ret;
 }
 
 // Handles finding and casting generated option controls
@@ -522,10 +822,132 @@ static final function bool FindOptionObjectByName(UTUIOptionList List, name Opti
 	return (obj != none);
 }
 
+static final function bool GetOptionObjectValue(UIObject obj, out string value)
+{
+	local UICheckbox CurCheckBox;
+	local UIEditBox CurEditBox;
+	local UINumericEditBox CurNumEditBox;
+	local UIComboBox CurComboBox;
+	//local UISlider CurSlider;
+	local bool boolvalue;
+	local float floatvalue;
+	
+	CurCheckBox = UICheckbox(obj);
+	if (CurCheckBox != none)
+	{
+		boolvalue = CurCheckBox.IsChecked();
+		value = string(int(boolvalue));
+			
+		return true;
+	}
+
+	CurNumEditBox = UINumericEditBox(obj);
+	if (CurNumEditBox != none)
+	{
+		//floatvalue = CurNumEditBox.GetNumericValue();
+		floatvalue = float(CurNumEditBox.GetValue(true));
+
+		value = string(floatvalue);
+		
+		return true;
+	}
+
+	CurEditBox = UIEditBox(obj);
+	if (CurEditBox != none)
+	{
+		value = CurEditBox.GetValue(true);
+		
+		return true;
+	}
+
+	CurComboBox = UIComboBox(obj);
+	if (CurComboBox != none)
+	{
+		value = CurComboBox.ComboEditbox.GetValue(true);
+		
+		return true;
+	}
+
+	//CurSlider = UISlider(obj);
+	//if (CurSlider != none)
+	//{
+	//	value = string(CurSlider.GetValue());
+		
+	//	return true;
+	//}
+
+	return false;
+}
+
+static final function bool SetOptionObjectValue(UIObject obj, string value, optional string markupstring)
+{
+	local UICheckbox CurCheckBox;
+	local UIEditBox CurEditBox;
+	local UINumericEditBox CurNumEditBox;
+	local UIComboBox CurComboBox;
+	//local UISlider CurSlider;
+	local bool boolvalue;
+	local float floatvalue;
+	local int index;
+	
+	CurCheckBox = UICheckbox(obj);
+	if (CurCheckBox != none)
+	{
+		boolvalue = bool(value);
+		CurCheckBox.SetValue(boolvalue);
+
+		return true;
+	}
+
+	CurNumEditBox = UINumericEditBox(obj);
+	if (CurNumEditBox != none)
+	{
+		floatvalue = class'NoMoreDemoGuy'.static.ParseFloat(value);
+		CurNumEditBox.SetNumericValue(floatvalue, true);
+		return true;
+	}
+
+	CurEditBox = UIEditBox(obj);
+	if (CurEditBox != none)
+	{
+		CurEditBox.SetDataStoreBinding(value);
+		return true;
+	}
+
+	CurComboBox = UIComboBox(obj);
+	if (CurComboBox != none)
+	{
+		index = CurComboBox.ComboList.FindItemIndex(value);
+		if (index != INDEX_NONE)
+		{
+			CurComboBox.ComboEditbox.SetDataStoreBinding(value);
+			CurComboBox.ComboList.SetIndex(index);
+		}
+		//index = int(value);
+		//if (index < arrstring.Length)
+		//{
+		//	//CurComboBox.ComboEditbox.SetDataStoreBinding(arrstring[index]);
+		//	//CurComboBox.ComboList.SetIndex(index);
+		//}
+		return true;
+	}
+
+	//CurSlider = UISlider(obj);
+	//if (CurSlider != none)
+	//{
+	//	CurSlider.SetValue(value);
+	//}
+
+	return false;
+}
+
 defaultproperties
 {
 	Title="Configure BotBalancer"
 
 	SettingsClass=class'BotBalancerMutatorSettings'
 	ConfigClass=class'BotBalancerMutator'
+
+	StringDatastoreClass=class'UTUIDataStore_2DStringList'
+	DataFieldPrefix="BotBalancer_"
 }

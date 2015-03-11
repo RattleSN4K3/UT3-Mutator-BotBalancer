@@ -1,0 +1,19 @@
+Compile:
+  ut3 make -final_release
+
+Add menu:
+  Open package BotBalancer in Editor
+  Add a UIScene (type of BotBalancerUIFrontendConfig)
+   Pagage: BotBalancer
+   Group: UI.FrontEnd
+   Name: ConfigMenu
+  Load skin UI_Skin_Derived and set to UTDerivedSkin
+  Paste archetype content (IMPORTANT: with Ctrl+V)
+  Close and save
+
+Strip:
+  ut3 stripsourcecommandlet BotBalancer
+
+Cook:
+  ut3 cookpackages -platform=pc BotBalancer
+
