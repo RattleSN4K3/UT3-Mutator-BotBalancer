@@ -36,6 +36,7 @@ var bool bIsOriginalForceAllRedSet;
 var private UTTeamGame CacheGame;
 var private class<UTBot> CacheBotClass;
 var private array<UTBot> BotsWaitForRespawn;
+var private array<PlayerController> PlayersWaitForChangeTeam;
 var private array<UTBot> BotsSetOrders;
 
 /** Used to track down spawned bots within the custom addbots code */
@@ -306,7 +307,7 @@ function ModifyPlayer(Pawn Other)
 
 function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 {
-	//@TODO: @FIX: problem with changing player when bots are about to spawn which causes players being put into the 0 team (bForceAllRed is set)
+	local BotBalancerTimerHelper parmtimer;
 
 	if (super.AllowChangeTeam(Other, num, bNewTeam))
 	{
@@ -318,6 +319,22 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 			PlayerController(Other).ReceiveLocalizedMessage(class'UTTeamGameMessage', PlayersSide == 0 ? 1 : 2);
 			return false;
 		}
+	}
+
+	// clear forced flag to allow team change for players
+	if (PlayerController(Other) != none && bNewTeam)
+	{
+		SemaForceAllRed(true);
+		CacheGame.bForceAllRed = false;
+
+		PlayersWaitForChangeTeam.AddItem(PlayerController(Other));
+
+		// as other mutators can disallow chaning, we need to remove this PC from PlayersWaitForChangeTeam
+		// we call a parameterized timer the next tick which removes that player from the array
+		parmtimer = new class'BotBalancerTimerHelper';
+		parmtimer.PC = PlayerController(Other);
+		parmtimer.Callback = self;
+		SetTimer(0.001, false, 'TimedChangedTeam', parmtimer);
 	}
 
 	if (PlayersVsBots)
@@ -341,6 +358,16 @@ function NotifySetTeam(Controller Other, TeamInfo OldTeam, TeamInfo NewTeam, boo
 	`Log(name$"::NotifySetTeam - Other:"@Other$" - OldTeam:"@OldTeam$" - NewTeam:"@NewTeam$" - bNewTeam:"@bNewTeam,,'BotBalancer');
 	super.NotifySetTeam(Other, OldTeam, NewTeam, bNewTeam);
 
+	if (PlayerController(Other) != none && bNewTeam)
+	{
+		// remove swapped player from array
+		PlayersWaitForChangeTeam.RemoveItem(PlayerController(Other));
+		// also remove invalid references, just in case
+		PlayersWaitForChangeTeam.RemoveItem(none);
+	}
+
+	CheckAndClearForceRedAll();
+
 	if (bMatchStarted && UTBot(Other) == none)
 	{
 		BalanceBotsTeams();
@@ -360,7 +387,6 @@ function Mutate(string MutateString, PlayerController Sender)
 	if (Sender == none)
 		return;
 
-`if(`notdefined(FINAL_RELEASE))
 	str = "BB SwitchBot"; // BB SwitchBot FromTeam ToTeam
 	if (Left(MutateString, Len(str)) ~= str)
 	{
@@ -418,6 +444,12 @@ event TimerCheckPlayerCount()
 	}
 }
 
+event TimerChangedTeam(PlayerController PC)
+{
+	PlayersWaitForChangeTeam.RemoveItem(PC);
+	CheckAndClearForceRedAll();
+}
+
 //**********************************************************************************
 // Delegate callbacks
 //**********************************************************************************
@@ -433,6 +465,9 @@ function OnBotDeath_PreCheck(Pawn Other, Object Sender)
 		UTBot(C).bSpawnedByKismet = false;
 		BotsWaitForRespawn.AddItem(UTBot(C));
 	}
+
+	// set bForceAllRed to bail out TooManyBots until Player respawned
+	SemaForceAllRed(true);
 	CacheGame.bForceAllRed = true;
 }
 
@@ -682,6 +717,7 @@ function SwitchBot(UTBot bot, int TeamNum)
 
 	OldTeam = bot.PlayerReplicationInfo.Team;
 	SemaForceAllRed(true);
+	CacheGame.bForceAllRed = false;
 	if (CacheGame.ChangeTeam(bot, TeamNum, true) && CacheGame.bTeamGame && bot.PlayerReplicationInfo.Team != OldTeam)
 	{
 		if (bot.Pawn != None)
@@ -691,9 +727,9 @@ function SwitchBot(UTBot bot, int TeamNum)
 
 		BotsWaitForRespawn.AddItem(bot);
 	}
-	else if (BotsWaitForRespawn.Length < 1)
+	else 
 	{
-		SemaForceAllRed(false);
+		CheckAndClearForceRedAll();
 	}
 }
 
@@ -769,6 +805,14 @@ private function SemaForceAllRed(bool bSet)
 	{
 		bIsOriginalForceAllRedSet = false;
 		CacheGame.bForceAllRed = bOriginalForceAllRed;
+	}
+}
+
+private function CheckAndClearForceRedAll()
+{
+	if (BotsWaitForRespawn.Length < 1 && PlayersWaitForChangeTeam.Length < 1)
+	{
+		SemaForceAllRed(false);
 	}
 }
 
