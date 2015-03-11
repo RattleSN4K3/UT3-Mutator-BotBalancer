@@ -1,3 +1,10 @@
+Alpha 3
+- Fixed: Imbalance with bots when mutator uses custom balancing feature
+- Added: Option to use random team for Players. vs. Bots
+- Added: Config scene for mutator settings in UI
+- Added: Mutator settings for WebAdmin
+- Changed: Minor tweaks
+
 Alpha 2
 - Fixed: Bot orders could change when bots are added in midgame
 - Added: Balancing team on player enters/leaves or changes team
