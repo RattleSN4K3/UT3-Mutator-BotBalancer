@@ -21,6 +21,7 @@ var bool bForceDesiredPlayerCount;
 var int DesiredPlayerCount;
 
 var bool bOriginalForceAllRed;
+var bool bIsOriginalForceAllRedSet;
 
 var private UTTeamGame CacheGame;
 var private class<UTBot> CacheBotClass;
@@ -229,7 +230,7 @@ function ModifyPlayer(Pawn Other)
 		// revert to original if all bots respawned (at least once)
 		if (BotsWaitForRespawn.Length < 1)
 		{
-			CacheGame.bForceAllRed = bOriginalForceAllRed;
+			SemaForceAllRed(false);
 
 			// re-set all bot orders for spawned bots
 			ResetBotOrders(BotsSetOrders);
@@ -282,6 +283,52 @@ function NotifySetTeam(Controller Other, TeamInfo OldTeam, TeamInfo NewTeam, boo
 		BalanceBotsTeams();
 	}
 }
+
+`if(`notdefined(FINAL_RELEASE))
+function Mutate(string MutateString, PlayerController Sender)
+{
+	local string str, value, value2;
+	local int i;
+	local UTBot bot;
+
+	`Log(name$"::Mutate - MutateString:"@MutateString$" - Sender:"@Sender,,'NoMoreDemoGuy');
+	super.Mutate(MutateString, Sender);
+
+	if (Sender == none)
+		return;
+
+`if(`notdefined(FINAL_RELEASE))
+	str = "BB SwitchBot"; // BB SwitchBot FromTeam ToTeam
+	if (Left(MutateString, Len(str)) ~= str)
+	{
+		value = Mid(MutateString, Len(str)+1); // FromTeam ToTeam
+		i = InStr(value, " ");
+		if (i != INDEX_NONE)
+		{
+			value2 = Mid(value, i+1); // ToTeam
+			value = Left(value, i); // FromTeam
+
+			if (int(value) < WorldInfo.GRI.Teams.Length && int(value2) < WorldInfo.GRI.Teams.Length)
+			{
+				if (GetRandomPlayerByTeam(WorldInfo.GRI.Teams[int(value)], bot))
+				{
+					SwitchBot(bot, int(value2));
+					Sender.ClientMessage("Bot"@bot.GetHumanReadableName()@"switched");
+				}
+				else
+				{
+					Sender.ClientMessage("Unable to get random bot from team"@value);
+				}
+			}
+			else
+			{
+				Sender.ClientMessage("Invalid team indizes");
+			}
+		}
+		return;
+	}
+}
+`endif
 
 //**********************************************************************************
 // Events
@@ -460,7 +507,7 @@ function AddBots(int InDesiredPlayerCount)
 	OldBotCount = BotsSpawnedOnce.Length;
 
 	// force TooManyBots fail out. it is called right on initial spawn for bots
-	bOriginalForceAllRed = CacheGame.bForceAllRed;
+	SemaForceAllRed(true);
 	CacheGame.bForceAllRed = true;
 
 	DesiredPlayerCount = Clamp(InDesiredPlayerCount, 1, 32);
@@ -489,7 +536,7 @@ function AddBots(int InDesiredPlayerCount)
 	// revert to original if not bot was added to array
 	if (BotsWaitForRespawn.Length < 1)
 	{
-		CacheGame.bForceAllRed = bOriginalForceAllRed;
+		SemaForceAllRed(false);
 	}
 
 	if (OldBotCount != BotsSpawnedOnce.Length && !CacheGame.bForceAllRed)
@@ -547,7 +594,7 @@ function BalanceBotsTeams()
 			diff = HighestCount - LowestCount;
 			if (diff > 1/* && Abs(PlayersCount[HighestIndex] - PlayersCount[LowestIndex]) > 1*/)
 			{
-				SwitchCount = diff/2;
+				SwitchCount = Round(float(diff)/2.0 + 0.5);
 			}
 		}
 	}
@@ -567,13 +614,19 @@ function SwitchBot(UTBot bot, int TeamNum)
 	local TeamInfo OldTeam;
 
 	OldTeam = bot.PlayerReplicationInfo.Team;
-	CacheGame.ChangeTeam(bot, TeamNum, true);
-	if (CacheGame.bTeamGame && bot.PlayerReplicationInfo.Team != OldTeam)
+	SemaForceAllRed(true);
+	if (CacheGame.ChangeTeam(bot, TeamNum, true) && CacheGame.bTeamGame && bot.PlayerReplicationInfo.Team != OldTeam)
 	{
 		if (bot.Pawn != None)
 		{
 			bot.Pawn.PlayerChangedTeam();
 		}
+
+		BotsWaitForRespawn.AddItem(bot);
+	}
+	else if (BotsWaitForRespawn.Length < 1)
+	{
+		SemaForceAllRed(false);
 	}
 }
 
@@ -636,6 +689,20 @@ function bool GetAdjustedTeamPlayerCount(out array<int> PlayersCount, out array<
 	}
 
 	return true;
+}
+
+private function SemaForceAllRed(bool bSet)
+{
+	if (bSet && !bIsOriginalForceAllRedSet)
+	{
+		bIsOriginalForceAllRedSet = true;
+		bOriginalForceAllRed = CacheGame.bForceAllRed;
+	}
+	else if (!bSet && bIsOriginalForceAllRedSet)
+	{
+		bIsOriginalForceAllRedSet = false;
+		CacheGame.bForceAllRed = bOriginalForceAllRed;
+	}
 }
 
 //**********************************************************************************
