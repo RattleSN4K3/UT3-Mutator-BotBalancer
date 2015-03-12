@@ -1,6 +1,15 @@
 class BotBalancerMutatorSettings extends Settings;
 
+struct WebAdminGroups
+{
+	var localized string Name;
+	var string ids;
+	var int id;
+};
+
 var localized array<string> PropertyDescriptions;
+
+var array<BotBalancerMutatorSettings.WebAdminGroups> Groups;
 
 function SetSpecialValue(name PropertyName, string NewValue)
 {
@@ -43,9 +52,31 @@ function SetSpecialValue(name PropertyName, string NewValue)
 
 function string GetSpecialValue(name PropertyName)
 {
-	local int i;
+	local int i, index;
 	local string ret;
 	local string propstr;
+	local array<string> GroupMapping;
+
+	if (PropertyName == 'WebAdmin_groups')
+	{
+		for (i=0; i<Groups.Length; i++)
+		{
+			propstr = Groups[i].id$"|"$i;
+			GroupMapping.AddItem(propstr);
+		}
+		BubbleSort(GroupMapping);
+
+		ret = "";
+		for (index=0; index<GroupMapping.Length; index++)
+		{
+			i = int(Split(GroupMapping[index], "|", true));
+			ret $= Groups[i].Name;
+			ret $= "=";
+			ret $= Groups[i].ids;
+
+			if (index < Groups.Length-1) ret $= ";";
+		}
+	}
 
 	propstr = string(PropertyName);
 	i = InStr(propstr, "_");
@@ -79,62 +110,57 @@ function bool GetPropertyValue(name PropertyName, out string PropertyValue)
 	return false;
 }
 
-function string OutputBool(bool value)
+static function BubbleSort(out array<string> arr)
 {
-	return value ? "1" : "0";
-}
+	local int i, n;
+	local string value;
 
-function bool ParseBool(string value, optional bool defaultvalue = false)
-{
-	local string tmp;
-	tmp = Locs(value);
-	switch (tmp)
+	for (i=0; i<arr.Length-1; i++)
 	{
-		case "1":
-		case "true":
-		case "on":
-		case "yes":
-			return true;
-			break;
-
-		case "0":
-		case "false":
-		case "off":
-		case "no":
-			return false;
-			break;
-
-		default:
-			return defaultvalue;
+		for (n=i+1; n<arr.Length; n++)
+		{
+			if (arr[i] > arr[n])
+			{
+				// switch them
+				value  = arr[i];
+				arr[i] = arr[n];
+				arr[n] = value;
+			}
+		}
 	}
 }
 
 DefaultProperties
 {
+	Groups[0]=(id=0,Name="General",ids="0,2")
+	Groups[1]=(id=1,Name="Players vs. Bots",ids="20,23")
+	Groups[2]=(id=2,Name="UT3 stock settings",ids="50,51")
+
+
 	Properties(0)=(PropertyID=0,Data=(Type=SDT_Int32))
 	PropertyMappings(0)=(ID=0,Name="UseLevelRecommendation",ColumnHeaderText="Use Level Recommendation",MappingType=PVMT_IDMapped,ValueMappings=((ID=0,Name="no "),(ID=1,Name="yes ")))
 	PropertyDescriptions(0)="Whether to use the level recommended player count for each map. Once  this is set, the player count will be adjusted to what ever the map has defined as min and max player count. A mean value will be used as bot player count."
 
-	Properties(1)=(PropertyID=1,Data=(Type=SDT_Int32))
-	PropertyMappings(1)=(ID=1,Name="PlayersVsBots",ColumnHeaderText="Players vs. Bots",MappingType=PVMT_IDMapped,ValueMappings=((ID=0,Name="no "),(ID=1,Name="yes ")))
+	Properties(1)=(PropertyID=20,Data=(Type=SDT_Int32))
+	PropertyMappings(1)=(ID=20,Name="PlayersVsBots",ColumnHeaderText="Players vs. Bots",MappingType=PVMT_IDMapped,ValueMappings=((ID=0,Name="no "),(ID=1,Name="yes ")))
 	PropertyDescriptions(1)="Whether to play a match with bots on one side (or multi sides with Multi-Team support) and humans players all in one team."
 
-	Properties(2)=(PropertyID=2,Data=(Type=SDT_Int32))
-	PropertyMappings(2)=(ID=2,Name="PlayersSide",ColumnHeaderText="Player side (for Player vs. Bots)",MappingType=PVMT_IdMapped,ValueMappings=((Id=-1,Name="Random"),(Id=0,Name="Red"),(Id=1,Name="Blue"),(Id=2,Name="Green"),(Id=3,Name="Gold"),(Id=255,Name="Unset")))
+	Properties(2)=(PropertyID=21,Data=(Type=SDT_Int32))
+	PropertyMappings(2)=(ID=21,Name="PlayersSide",ColumnHeaderText="Player side (for Player vs. Bots)",MappingType=PVMT_IdMapped,ValueMappings=((Id=-1,Name="Random"),(Id=0,Name="Red"),(Id=1,Name="Blue"),(Id=2,Name="Green"),(Id=3,Name="Gold"),(Id=255,Name="Unset")))
 	PropertyDescriptions(2)="The player side in which all the human players will be put in when they connected. They can still change to the other side unless 'Allow Team Change' not allowed."
 
-	Properties(3)=(PropertyID=3,Data=(Type=SDT_Float))
-	PropertyMappings(3)=(ID=3,Name="BotRatio",ColumnHeaderText="Bot/Player Ratio",MappingType=PVMT_Ranged,MinVal=0.0001,MaxVal=64.0,RangeIncrement=0.5)
+	Properties(3)=(PropertyID=1,Data=(Type=SDT_Float))
+	PropertyMappings(3)=(ID=1,Name="BotRatio",ColumnHeaderText="Bot/Player Ratio",MappingType=PVMT_Ranged,MinVal=0.0001,MaxVal=64.0,RangeIncrement=0.5)
 	PropertyDescriptions(3)="The number of bots to balance for each player in the oppoenent team. Basically this values represents how much player a human player results. A value of 2.0 would mean that a human player is as strong as 2 bots."
 
-	Properties(4)=(PropertyID=4,Data=(Type=SDT_Int32))
-	PropertyMappings(4)=(ID=4,Name="AllowTeamChangeVsBots",ColumnHeaderText="Allow Team Change (in Player vs. Bots)",MappingType=PVMT_IDMapped,ValueMappings=((ID=0,Name="no "),(ID=1,Name="yes ")))
+	Properties(4)=(PropertyID=22,Data=(Type=SDT_Int32))
+	PropertyMappings(4)=(ID=22,Name="AllowTeamChangeVsBots",ColumnHeaderText="Allow Team Change (in Player vs. Bots)",MappingType=PVMT_IDMapped,ValueMappings=((ID=0,Name="no "),(ID=1,Name="yes ")))
 	PropertyDescriptions(4)="Whether to allow team changes for human player in Players vs. Bots mode. When this value is set, the any human player will be forced to play on the human side."
 
 
 	// ---=== UT3 override config ===---
 
-	Properties(5)=(PropertyID=5,Data=(Type=SDT_Int32))
-	PropertyMappings(5)=(ID=5,Name="bPlayersBalanceTeams",ColumnHeaderText="Players Balance Teams",MappingType=PVMT_IDMapped,ValueMappings=((ID=0,Name="no "),(ID=1,Name="yes ")))
+	Properties(5)=(PropertyID=50,Data=(Type=SDT_Int32))
+	PropertyMappings(5)=(ID=50,Name="bPlayersBalanceTeams",ColumnHeaderText="Players Balance Teams",MappingType=PVMT_IDMapped,ValueMappings=((ID=0,Name="no "),(ID=1,Name="yes ")))
 	PropertyDescriptions(5)="Joining players will join the team with the least players."
 }
