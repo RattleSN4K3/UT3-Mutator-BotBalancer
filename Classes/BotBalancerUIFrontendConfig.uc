@@ -197,8 +197,14 @@ function bool HandleInputKey( const out InputEventParameters EventParms )
 function SetupMenuOptions()
 {
 	local DynamicMenuOption CurMenuOpt, EmptyMenuOpt;
+	local array<SettingsPropertyPropertyMetaData> SortedMappings;
 	local int i;
 	local name n;
+
+	local Settings setts;
+	local int p, index;
+	local string str, strtitle;
+	local array<string> groups, ranges;
 
 	`Log(name$"::SetupMenuOptions",,'BotBalancer');
 
@@ -208,19 +214,55 @@ function SetupMenuOptions()
 	bRegeneratingOptions = True;
 	OptionsList.DynamicOptionTemplates.Length = 0;
 
-	for (i=0; i<SettingsClass.default.PropertyMappings.Length; i++) 
+	setts = new SettingsClass;
+	
+	// sort by ID
+	SortedMappings = SortPropertyMappings(setts.PropertyMappings);
+
+	for (i=0; i<SortedMappings.Length; i++) 
 	{
-		n = SettingsClass.default.PropertyMappings[i].Name;
+		n = SortedMappings[i].Name;
 
 		CurMenuOpt = EmptyMenuOpt;
 		CurMenuOpt.OptionName = n;
 		CurMenuOpt.OptionType = UTOT_CheckBox;
-		CurMenuOpt.FriendlyName = SettingsClass.default.PropertyMappings[i].ColumnHeaderText;
-		CurMenuOpt.Description = GetDescriptionOfSetting(n);
+		CurMenuOpt.FriendlyName = SortedMappings[i].ColumnHeaderText;
+		CurMenuOpt.Description = GetDescriptionOfSetting(n, setts);
 
 		if (PopulateMenuOption(n, CurMenuOpt))
 		{
 			OptionsList.DynamicOptionTemplates.AddItem(CurMenuOpt);
+		}
+	}
+
+	// insert separator captions
+	str = setts.GetSpecialValue('WebAdmin_groups');
+	ParseStringIntoArray(str, groups, ";", true);
+	for (i=0; i<groups.Length; i++) 
+	{
+		index = InStr(groups[i], "=");
+		if (index == INDEX_NONE) continue;
+
+		strtitle = Left(groups[i], index);
+		str = Mid(groups[i], index+1);
+		ParseStringIntoArray(str, ranges, ",", false);
+
+		index = int(ranges[0]);
+		p = SortedMappings.Find('Id', index);
+		if (p != INDEX_NONE)
+		{
+			CurMenuOpt = EmptyMenuOpt;
+			CurMenuOpt.OptionName = name("Separator"$i);
+			CurMenuOpt.OptionType = UTOT_EditBox;
+			CurMenuOpt.FriendlyName = strtitle;
+			//CurMenuOpt.bKeyboardOrMouseOption = true;
+			CurMenuOpt.Description = "";
+
+			index = OptionsList.DynamicOptionTemplates.Find('OptionName', SortedMappings[p].Name);
+			if (index != INDEX_NONE)
+			{
+				OptionsList.DynamicOptionTemplates.InsertItem(index, CurMenuOpt);
+			}
 		}
 	}
 
@@ -995,6 +1037,39 @@ static final function bool SetOptionObjectValue(UIObject obj, string value, opti
 
 	return false;
 }
+
+static function array<SettingsPropertyPropertyMetaData> SortPropertyMappings(array<SettingsPropertyPropertyMetaData> mappings)
+{
+	local array<SettingsPropertyPropertyMetaData> sorted;
+	local int i, j;
+
+	sorted.Length = 0;
+
+	for (i = 0; i < mappings.length; i++)
+	{
+		if (mappings[i].Name == '') continue;
+		
+		for (j = 0; j < sorted.length; j++)
+		{
+			if (mappings[i].Id < sorted[j].Id)
+			{
+				sorted.Insert(j, 1);
+				sorted[j] = mappings[i];
+				break;
+			}
+		}
+		if (j == sorted.length)
+		{
+			sorted[j] = mappings[i];
+		}
+	}
+
+	return sorted;
+}
+
+//**********************************************************************************
+// Helper functions
+//**********************************************************************************
 
 static function float ParseFloat(string value)
 {
