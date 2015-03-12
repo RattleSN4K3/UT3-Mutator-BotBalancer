@@ -1,5 +1,8 @@
 class BotBalancerMutator extends UTMutator;
 
+// support for in-game logging in this class
+`include( .\BotBalancer\Classes\BotBalancerLogger.uci );
+
 `if(`notdefined(FINAL_RELEASE))
 	var bool bShowDebug;
 
