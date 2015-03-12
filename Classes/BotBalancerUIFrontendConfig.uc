@@ -852,7 +852,6 @@ function ResetToDefaults()
 	`Log(name$"::ResetToDefaults",,'BotBalancer');
 
 	ConfigClass.static.Localize("WebAdmin_ResetToDefaults", "", "");
-	ConfigClass.static.StaticSaveConfig();
 }
 
 function string CreateDataStoreStringList(name listname, array<string> entries)
@@ -1086,7 +1085,7 @@ defaultproperties
 	Title="Configure BotBalancer"
 
 	SettingsClass=class'BotBalancerMutatorSettings'
-	ConfigClass=class'BotBalancerMutator'
+	ConfigClass=class'BotBalancerConfig'
 
 	StringDatastoreClass=class'UTUIDataStore_2DStringList'
 	DataFieldPrefix="BotBalancer_"
