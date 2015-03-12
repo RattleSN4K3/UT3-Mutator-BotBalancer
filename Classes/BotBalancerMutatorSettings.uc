@@ -46,7 +46,7 @@ function SetSpecialValue(name PropertyName, string NewValue)
 		}
 
 		cfg.Validate();
-		cfg.SaveConfig();
+		cfg.SaveConfigCustom();
 	}
 }
 

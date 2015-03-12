@@ -488,7 +488,7 @@ function InitConfig()
 	MyConfig = class'BotBalancerConfig'.static.GetConfig();
 	MyConfig.Validate();
 
-	MyConfig.SaveConfig();
+	MyConfig.SaveConfigCustom();
 
 	// set runtime vars from config values
 	bPlayersBalanceTeams = MyConfig.bPlayersBalanceTeams;

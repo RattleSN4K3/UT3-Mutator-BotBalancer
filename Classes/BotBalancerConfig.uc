@@ -2,7 +2,13 @@ class BotBalancerConfig extends Object
 	config(BotBalancer)
 	perobjectconfig;
 
+//`define ALLOW_PERSISTENT 1
+
 `if(`notdefined(FINAL_RELEASE))
+
+	//`define CLEAR_PERSISTENT 1
+	//`define FORCE_CONSOLE 1
+
 	var bool bShowDebug;
 `endif
 
@@ -23,6 +29,8 @@ var() config bool bPlayersBalanceTeams;
 //**********************************************************************************
 // Workflow variables
 //**********************************************************************************
+
+var() transient string DataFieldPrefix;
 
 var array<string> Variables;
 var array<name> VariablesNames;
@@ -68,11 +76,103 @@ static final function BotBalancerConfig GetConfig()
 	{
 		cfg = GetConfig();
 		cfg.ResetConfig();
-		cfg.SaveConfig();
+		cfg.SaveConfigCustom();
 		return "";
 	}
 
 	return super.Localize(SectionName, KeyName, PackageName);
+}
+
+final function SaveConfigCustom()
+{
+	local UIDynamicFieldProvider RegistryProvider;
+	local UIProviderScriptFieldValue field, emptyfield;
+	local string str;
+	local name n;
+`if(`notdefined(FINAL_RELEASE))
+`if(`notdefined(ALLOW_PERSISTENT))
+`if(`isdefined(CLEAR_PERSISTENT))
+	local BotBalancerPersistentConfigHelper remover;
+`endif
+`endif
+`endif
+
+	// if console, save values into registry
+	if (IsConsole())
+	{
+		if (GetRegistry(RegistryProvider))
+		{
+`if(`notdefined(FINAL_RELEASE))
+`if(`notdefined(ALLOW_PERSISTENT))
+`if(`isdefined(CLEAR_PERSISTENT))
+			// as persitent registry entries are not clear (only in editor)
+			// we have to create an object within (living inside) the registry provider
+			// which lets us have access into protected members to remove the config property
+			remover = new(RegistryProvider) class'BotBalancerPersistentConfigHelper';
+`endif
+`endif
+`endif
+
+			foreach AllVariablesNames(n)
+			{
+				if (n == '') continue;
+
+				str = GetSpecialValue(n);
+					
+				field = emptyfield;
+				//field.PropertyTag = n;
+				field.PropertyType = DATATYPE_Property;
+				field.StringValue = str;
+
+`if(`notdefined(FINAL_RELEASE))
+`if(`notdefined(ALLOW_PERSISTENT))
+`if(`isdefined(CLEAR_PERSISTENT))
+				RegistryProvider.RemoveField(name(DataFieldPrefix$n));
+				remover.RemoveFieldCustom(name(DataFieldPrefix$n));
+`endif
+`endif
+`endif
+
+`if(`isdefined(ALLOW_PERSISTENT))
+				RegistryProvider.AddField(name(DataFieldPrefix$n), DATATYPE_Property, true);
+				RegistryProvider.SetField(name(DataFieldPrefix$n), field);
+`else
+`if(`notdefined(CLEAR_PERSISTENT))
+				RegistryProvider.SetField(name(DataFieldPrefix$n), field, false);
+`endif
+`endif
+			}
+
+			RegistryProvider.SavePersistentProviderData();
+		}
+	}
+	else
+	{
+		// ...otherwise save values into ini file
+		SaveConfig();
+	}			
+}
+
+final function LoadConfigCustom()
+{
+	local UIDynamicFieldProvider RegistryProvider;
+	local UIProviderScriptFieldValue field;
+	local name n;
+
+	// only if console we need to restore values from the registry
+	if (IsConsole())
+	{
+		if (GetRegistry(RegistryProvider))
+		{
+			foreach AllVariablesNames(n)
+			{
+				if (n != '' && RegistryProvider.GetField(name(DataFieldPrefix$n), field))
+				{
+					SetSpecialValue(n, field.StringValue);
+				}
+			}
+		}
+	}
 }
 
 //**********************************************************************************
@@ -100,6 +200,8 @@ final function Init()
 		AllVariables.AddItem(s);
 		AllVariablesNames.AddItem(name(s));
 	}
+
+	LoadConfigCustom();
 }
 
 final function Validate()
@@ -120,6 +222,28 @@ function ResetConfig()
 
 	// --- UT3 override config ---
 	bPlayersBalanceTeams=true;
+}
+
+final function bool GetRegistry(out UIDynamicFieldProvider RegistryProvider)
+{
+	local DataStoreClient DSClient;
+	local UIDataStore_Registry RegistryDS;
+
+	DSClient = class'UIInteraction'.static.GetDataStoreClient();
+	if ( DSClient != None )
+	{
+		RegistryDS = UIDataStore_Registry(DSClient.FindDataStore('Registry'));
+		if ( RegistryDS != None )
+		{
+			RegistryProvider = RegistryDS.GetDataProvider();
+			if ( RegistryProvider != None )
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 //**********************************************************************************
@@ -187,12 +311,12 @@ function SetSpecialValue(name PropertyName, string NewValue)
 // Static functions
 //**********************************************************************************
 
-function string OutputBool(bool value)
+static function string OutputBool(bool value)
 {
 	return value ? "1" : "0";
 }
 
-function bool ParseBool(string value, optional bool defaultvalue = false)
+static function bool ParseBool(string value, optional bool defaultvalue = false)
 {
 	local string tmp;
 	tmp = Locs(value);
@@ -217,7 +341,7 @@ function bool ParseBool(string value, optional bool defaultvalue = false)
 	}
 }
 
-function float ParseFloat(string value)
+static function float ParseFloat(string value)
 {
 	if (InStr(value, ",", false) != INDEX_NONE)
 	{
@@ -227,9 +351,34 @@ function float ParseFloat(string value)
 	return float(value);
 }
 
-function int ParseInt(string value)
+static function int ParseInt(string value)
 {
 	return int(value);
+}
+
+//**********************************************************************************
+// Helper functions
+//**********************************************************************************
+
+/** Wrapper method for IsConsole which supports forcing PS3 on PC (on debug). Check FORCE_CONSOLE */
+static function bool IsConsole()
+{
+	if (class'UIRoot'.static.IsConsole()
+
+`if(`notdefined(FINAL_RELEASE))
+`if(`isdefined(FORCE_CONSOLE))
+
+		|| true
+
+`endif
+`endif
+
+	)
+	{
+		return true;
+	}
+
+	return false;
 }
 
 DefaultProperties
@@ -242,6 +391,7 @@ DefaultProperties
 
 	Variables.Add("bPlayersBalanceTeams")
 
+	DataFieldPrefix="BotBalancer_"
 
 	// ---=== Config ===---
 
