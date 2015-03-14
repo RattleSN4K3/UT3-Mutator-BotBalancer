@@ -4,6 +4,8 @@ Description="Balances the teams based on set conditions (Players vs. Bots, Bot-r
 
 [BotBalancerUIFrontendConfig]
 Title="Configure BotBalancer"
+ConfigSavedString="Config saved!"
+ConfigRestoredString="Config restored/cleared!"
 
 [BotBalancerMutatorSettings]
 PropertyMappings[0]=(ColumnHeaderText="Use Level Recommendation",ValueMappings=((Name="no "),(Name="yes ")))

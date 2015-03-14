@@ -21,6 +21,8 @@ struct SUIIdStringCollectionInfo
 //**********************************************************************************
 
 var() transient localized string Title;
+var() transient localized string ConfigSavedString;
+var() transient localized string ConfigRestoredString;
 
 //'''''''''''''''''''''''''
 // Workflow variables
@@ -137,13 +139,18 @@ function SetTitle()
 
 function SetupButtonBar()
 {
+	local string str;
 	`Log(name$"::SetupButtonBar",,'BotBalancer');
+
+	// show START button for accept button
+	str = Localize("ButtonCallouts", "Accept", "UTGameUI");
+	str = ReplMarkup(str, "<StringAliasMap:Accept>", "<StringAliasMap:Start>");
 
 	if (ButtonBar != none)
 	{
 		ButtonBar.Clear();
 		ButtonBar.AppendButton("<Strings:UTGameUI.ButtonCallouts.Back>", OnButtonBar_Back);
-		ButtonBar.AppendButton("<Strings:UTGameUI.ButtonCallouts.Accept>", OnButtonBar_Accept);
+		ButtonBar.AppendButton(str, OnButtonBar_Accept);
 		ButtonBar.AppendButton("<Strings:UTGameUI.ButtonCallouts.ResetToDefaults>", OnButtonBar_ResetToDefaults);
 	}
 }
@@ -173,7 +180,14 @@ function bool HandleInputKey( const out InputEventParameters EventParms )
 	{
 		if(EventParms.EventType==IE_Released)
 		{
-			if(EventParms.InputKeyName=='XboxTypeS_B' || EventParms.InputKeyName=='Escape')
+			// Accept Start key as saving request
+			if (class'UIRoot'.static.IsConsole() && EventParms.InputKeyName=='XboxTypeS_Start')
+			{
+				OnAccept();
+				CloseScene(Self);
+				bResult=true;
+			}
+			else if(EventParms.InputKeyName=='XboxTypeS_B' || EventParms.InputKeyName=='Escape')
 			{
 				OnBack();
 				bResult=true;
@@ -645,6 +659,12 @@ function OnAccept()
 
 	`Log(name$"::OnAccept - Save config",,'BotBalancer');
 	SettingsObj.SetSpecialValue('WebAdmin_Save', "");
+
+	// show additional toast message for consoles
+	if (class'UIRoot'.static.IsConsole())
+	{
+		class'UTUIScene'.static.ShowOnlineToast(ConfigSavedString);
+	}
 }
 
 /** Reset to defaults callback. */
@@ -852,6 +872,12 @@ function ResetToDefaults()
 	`Log(name$"::ResetToDefaults",,'BotBalancer');
 
 	ConfigClass.static.Localize("WebAdmin_ResetToDefaults", "", "");
+
+	// show additional toast message for consoles
+	if (class'UIRoot'.static.IsConsole())
+	{
+		class'UTUIScene'.static.ShowOnlineToast(ConfigRestoredString);
+	}
 }
 
 function string CreateDataStoreStringList(name listname, array<string> entries)
@@ -1080,9 +1106,25 @@ static function float ParseFloat(string value)
 	return float(value);
 }
 
+static function string ReplMarkup(string MarkupString, string str, string rep)
+{
+	local int index;
+	index = Instr(MarkupString, ">");
+	if (InStr(Locs(MarkupString), Locs(str)) >= 0)
+		MarkupString = Repl(MarkupString, str, rep, false);
+	else if (index != INDEX_NONE)
+		MarkupString = rep$Mid(MarkupString, index+1);
+	else
+		MarkupString = rep$MarkupString;
+
+	return MarkupString;
+}
+
 defaultproperties
 {
 	Title="Configure BotBalancer"
+	ConfigSavedString="Config saved!"
+	ConfigRestoredString="Config restored/cleared!"
 
 	SettingsClass=class'BotBalancerMutatorSettings'
 	ConfigClass=class'BotBalancerConfig'
