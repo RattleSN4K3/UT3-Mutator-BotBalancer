@@ -384,14 +384,14 @@ static function LogHud(string msg, optional name tag)
 	LogInternal(msg, tag);
 
 `if( `notdefined(NO_CONSOLE) )
-	//if (class'BotBalancer'.default.Logger == none && !class'BotBalancer'.static.CreateLogger())
-	//{
-	//	class'BotBalancer'.static.StaticAddMessage(msg, tag);
-	//}
-	//else
-	//{
-	//	class'BotBalancer'.default.Logger.AddMessage(msg, tag);
-	//}
+	if (class'BotBalancer'.default.Logger == none && !class'BotBalancer'.static.CreateLogger())
+	{
+		class'BotBalancer'.static.StaticAddMessage(msg, tag);
+	}
+	else
+	{
+		class'BotBalancer'.default.Logger.AddMessage(msg, tag);
+	}
 `endif // END `notdefined(NO_CONSOLE)
 }
 
