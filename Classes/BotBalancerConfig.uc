@@ -16,10 +16,14 @@ class BotBalancerConfig extends Object
 // Config variables
 //**********************************************************************************
 
+var() config float BotRatio;
+
 var() config bool UseLevelRecommendation;
+var() config float LevelRecommendationMultiplier;
+var() config int LevelRecommendationOffsetPost;
+
 var() config bool PlayersVsBots;
 var() config int PlayersSide;
-var() config float BotRatio;
 var() config bool AllowTeamChangeVsBots;
 
 // ---=== UT3 override config ===---
@@ -207,6 +211,11 @@ final function Init()
 final function Validate()
 {
 	if (BotRatio <= 0.0) BotRatio = 2.0;
+
+	if (LevelRecommendationMultiplier < 0)
+		LevelRecommendationMultiplier = Abs(LevelRecommendationMultiplier);
+	else if (LevelRecommendationMultiplier == 0.0)
+		LevelRecommendationMultiplier = 1.0;
 }
 
 // Somehow the archetype values are changed. We need to reset the value hardcoded
@@ -214,10 +223,14 @@ function ResetConfig()
 {
 	`Log(name$"::ResetConfig",bShowDebug,'NoMoreDemoGuy');
 
+	BotRatio=2.0;
+
 	UseLevelRecommendation=false;
+	LevelRecommendationMultiplier=1.0;
+	LevelRecommendationOffsetPost=0;
+
 	PlayersVsBots=false;
 	PlayersSide=-1;
-	BotRatio=2.0;
 	AllowTeamChangeVsBots=false;
 
 	// --- UT3 override config ---
@@ -270,10 +283,14 @@ function string GetSpecialValue(name PropertyName)
 
 		// Config
 
+		case 'BotRatio': return string(BotRatio);
+		
 		case 'UseLevelRecommendation': return OutputBool(UseLevelRecommendation);
+		case 'LevelRecommendationMultiplier': return string(LevelRecommendationMultiplier);
+		case 'LevelRecommendationOffsetPost': return string(LevelRecommendationOffsetPost);
+
 		case 'PlayersVsBots': return OutputBool(PlayersVsBots);
 		case 'PlayersSide': return string(PlayersSide);
-		case 'BotRatio': return string(BotRatio);
 		case 'AllowTeamChangeVsBots': return OutputBool(AllowTeamChangeVsBots);
 
 		// UT3 override config
@@ -294,10 +311,14 @@ function SetSpecialValue(name PropertyName, string NewValue)
 	{
 		// Config
 
+		case 'BotRatio': BotRatio = ParseFloat(NewValue);break;
+		
 		case 'UseLevelRecommendation': UseLevelRecommendation = ParseBool(NewValue);break;
+		case 'LevelRecommendationMultiplier': LevelRecommendationMultiplier = ParseFloat(NewValue);break;
+		case 'LevelRecommendationOffsetPost': LevelRecommendationOffsetPost = ParseInt(NewValue);break;
+
 		case 'PlayersVsBots': PlayersVsBots = ParseBool(NewValue);break;
 		case 'PlayersSide': PlayersSide = ParseInt(NewValue);break;
-		case 'BotRatio': BotRatio = ParseFloat(NewValue);break;
 		case 'AllowTeamChangeVsBots': AllowTeamChangeVsBots = ParseBool(NewValue);break;
 	
 		// UT3 override config
@@ -383,10 +404,14 @@ static function bool IsConsole()
 
 DefaultProperties
 {
+	Variables.Add("BotRatio")
+	
 	Variables.Add("UseLevelRecommendation")
+	Variables.Add("LevelRecommendationMultiplier")
+	Variables.Add("LevelRecommendationOffsetPost")
+	
 	Variables.Add("PlayersVsBots")
 	Variables.Add("PlayersSide")
-	Variables.Add("BotRatio")
 	Variables.Add("AllowTeamChangeVsBots")
 
 	Variables.Add("bPlayersBalanceTeams")
@@ -395,10 +420,14 @@ DefaultProperties
 
 	// ---=== Config ===---
 
+	BotRatio=2.0
+
 	UseLevelRecommendation=false
+	LevelRecommendationMultiplier=1.0
+	LevelRecommendationOffsetPost=0
+
 	PlayersVsBots=false
 	PlayersSide=-1
-	BotRatio=2.0
 	AllowTeamChangeVsBots=false
 
 	// --- UT3 override config ---

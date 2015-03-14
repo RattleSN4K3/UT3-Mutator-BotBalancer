@@ -163,6 +163,9 @@ function MatchStarting()
 	{
 		CacheGame.bAutoNumBots = true;
 		DesiredPlayerCount = CacheGame.LevelRecommendedPlayers();
+		DesiredPlayerCount *= MyConfig.LevelRecommendationMultiplier;
+		DesiredPlayerCount += MyConfig.LevelRecommendationOffsetPost;
+		DesiredPlayerCount = Max(DesiredPlayerCount, 0);
 		bForceDesiredPlayerCount = true;
 	}
 	else if (CacheGame.HasOption(CacheGame.ServerOptions, "NumPlay"))
