@@ -11,6 +11,14 @@ event TimedChangedTeam()
 	}
 }
 
+event TimedBecamePlayer()
+{
+	if (PC != none && Callback != none)
+	{
+		Callback.TimerBecamePlayer(PC);
+	}
+}
+
 DefaultProperties
 {
 }

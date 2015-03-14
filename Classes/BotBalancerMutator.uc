@@ -40,6 +40,7 @@ var private UTTeamGame CacheGame;
 var private class<UTBot> CacheBotClass;
 var private array<UTBot> BotsWaitForRespawn;
 var private array<PlayerController> PlayersWaitForChangeTeam;
+var private array<PlayerController> PlayersWaitForRequestTeam;
 var private array<UTBot> BotsSetOrders;
 
 /** Used to track down spawned bots within the custom addbots code */
@@ -310,32 +311,44 @@ function ModifyPlayer(Pawn Other)
 
 function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 {
+	local PlayerController PC;
 	local BotBalancerTimerHelper parmtimer;
 
+	PC = PlayerController(Other);
 	if (super.AllowChangeTeam(Other, num, bNewTeam))
 	{
-		// disallow changing team if PlayersVsBots is set
-		if (PlayersVsBots && PlayerController(Other) != none && bNewTeam &&
-			num != PlayersSide && !MyConfig.AllowTeamChangeVsBots)
+		// disallow changing team if PlayersVsBots is set (but only if not a spectator)
+		if (PlayersVsBots && !MyConfig.AllowTeamChangeVsBots && PC != none && 
+			bNewTeam && num != PlayersSide && Other.PlayerReplicationInfo != none && !Other.PlayerReplicationInfo.bOnlySpectator)
 		{
 			//@TODO: add support for Multi-Team
-			PlayerController(Other).ReceiveLocalizedMessage(class'UTTeamGameMessage', PlayersSide == 0 ? 1 : 2);
+			PC.ReceiveLocalizedMessage(class'UTTeamGameMessage', PlayersSide == 0 ? 1 : 2);
 			return false;
 		}
 	}
 
-	// clear forced flag to allow team change for players
-	if (PlayerController(Other) != none && bNewTeam)
+	// Note 1: clear forced flag to allow team change for players
+	// Note 2: players connected as players and entering midgame (becomeactive) do call
+	//         AllowBecomeActivePlayer before AllowChangeTeam is called. At this time
+	//         these players already have bOnlySpectator unset (UTPlayerController::ServerBecomeActivePlayer).
+	//         For this case, the mutator stores a requesting player into an array which is queried for now which
+	//         then represents a valid BecomeActivePlayer procedure
+	if (PC != none && (bNewTeam || PlayersWaitForRequestTeam.Find(PC) != INDEX_NONE))
 	{
+		// remove changing player from array
+		PlayersWaitForRequestTeam.RemoveItem(PC);
+		// also remove invalid references, just in case
+		PlayersWaitForRequestTeam.RemoveItem(none);
+
 		SemaForceAllRed(true);
 		CacheGame.bForceAllRed = false;
 
-		PlayersWaitForChangeTeam.AddItem(PlayerController(Other));
+		PlayersWaitForChangeTeam.AddItem(PC);
 
-		// as other mutators can disallow chaning, we need to remove this PC from PlayersWaitForChangeTeam
+		// as other mutators can disallow changing, we need to remove this PC from PlayersWaitForChangeTeam
 		// we call a parameterized timer the next tick which removes that player from the array
 		parmtimer = new class'BotBalancerTimerHelper';
-		parmtimer.PC = PlayerController(Other);
+		parmtimer.PC = PC;
 		parmtimer.Callback = self;
 		SetTimer(0.001, false, 'TimedChangedTeam', parmtimer);
 	}
@@ -348,7 +361,7 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 			num = GetNextTeamIndex(AIController(Other) != none);
 		}
 	}
-	else if (bPlayersBalanceTeams && PlayerController(Other) != none)
+	else if (bPlayersBalanceTeams && PC != none)
 	{
 		num = GetNextTeamIndex(false);
 	}
@@ -372,6 +385,48 @@ function NotifySetTeam(Controller Other, TeamInfo OldTeam, TeamInfo NewTeam, boo
 	CheckAndClearForceRedAll();
 
 	if (bMatchStarted && UTBot(Other) == none)
+	{
+		BalanceBotsTeams();
+	}
+}
+
+function bool AllowBecomeActivePlayer(PlayerController P)
+{
+	local bool ret;
+	local BotBalancerTimerHelper parmtimer;
+
+	`Log(name$"::AllowBecomeActivePlayer - P:"@P,bShowDebug,'BotBalancer');
+	ret = super.AllowBecomeActivePlayer(P);
+
+	if (ret && P != none)
+	{
+		PlayersWaitForRequestTeam.AddItem(P);
+
+		// as other mutators can disallow becoming active, we need to remove this PC from PlayersWaitForRequestTeam
+		// we call a parameterized timer the next tick which removes that player from the array
+		parmtimer = new class'BotBalancerTimerHelper';
+		parmtimer.PC = P;
+		parmtimer.Callback = self;
+		SetTimer(0.001, false, 'TimedBecamePlayer', parmtimer);
+	}
+
+	return ret;
+}
+
+`if(`notdefined(FINAL_RELEASE))
+function NotifyBecomeActivePlayer(PlayerController Player)
+{
+	`Log(name$"::NotifyBecomeActivePlayer - Player:"@Player,bShowDebug,'BotBalancer');
+	super.NotifyBecomeActivePlayer(Player);
+}
+`endif
+
+function NotifyBecomeSpectator(PlayerController Player)
+{
+	`Log(name$"::NotifyBecomeSpectator - Player:"@Player,bShowDebug,'BotBalancer');
+	super.NotifyBecomeSpectator(Player);
+
+	if (bMatchStarted)
 	{
 		BalanceBotsTeams();
 	}
@@ -419,6 +474,21 @@ function Mutate(string MutateString, PlayerController Sender)
 		}
 		return;
 	}
+
+	str = "BB Spec"; // BB Switch
+	if (Left(MutateString, Len(str)) ~= str)
+	{
+		if (GoToSpectator(Sender))
+		{
+			Sender.ClientMessage("Switched to spectator");
+		}
+		else
+		{
+			Sender.ClientMessage("Unable to switch to spectator");
+		}
+		return;
+	}
+	
 }
 `endif
 
@@ -451,6 +521,11 @@ event TimerChangedTeam(PlayerController PC)
 {
 	PlayersWaitForChangeTeam.RemoveItem(PC);
 	CheckAndClearForceRedAll();
+}
+
+event TimerBecamePlayer(PlayerController PC)
+{
+	PlayersWaitForRequestTeam.RemoveItem(PC);
 }
 
 //**********************************************************************************
@@ -735,6 +810,60 @@ function SwitchBot(UTBot bot, int TeamNum)
 		CheckAndClearForceRedAll();
 	}
 }
+
+
+`if(`notdefined(FINAL_RELEASE))
+function bool GoToSpectator( PlayerController PC )
+{
+	local UTGame G;
+
+	`log(name$"::GoToSpectator - PC:"@PC,bShowDebug,'BotBalancer');
+
+	if (WorldInfo.Game == none)
+		return false;
+
+	G = UTGame(WorldInfo.Game);
+
+	if (G != none && G.BecomeSpectator(PC))
+	{
+		PC.PlayerReplicationInfo.bIsSpectator = true;
+		PC.PlayerReplicationInfo.bOnlySpectator = true;
+		PC.PlayerReplicationInfo.bOutOfLives = true;
+		
+		if ( PC.Pawn != None )
+			PC.Pawn.Suicide();
+
+		if (PC.PlayerReplicationInfo.Team != none)
+		{
+			PC.PlayerReplicationInfo.Team.RemoveFromTeam  (PC);
+			PC.PlayerReplicationInfo.Team = None;
+		}
+
+
+		PC.GotoState('Spectating');
+		PC.ClientGotoState('Spectating');
+		//PC.ClientGotoState('Spectating', 'Begin'); Begin is not defined
+		PC.Reset();
+		PC.PlayerReplicationInfo.Reset();
+		
+		WorldInfo.Game.BroadcastLocalizedMessage( WorldInfo.Game.GameMessageClass, 14, PC.PlayerReplicationInfo );
+
+		//// Already called in BecomeSpectator
+		//if (WorldInfo.Game.BaseMutator != none)
+		//	WorldInfo.Game.BaseMutator.NotifyBecomeSpectator(PC);
+
+		//// Already called in BecomeSpectator
+		//if (G.VoteCollector != none)
+		//	G.VoteCollector.NotifyBecomeSpectator(UTPlayerController(PC));
+
+		WorldInfo.Game.UpdateGameSettingsCounts();
+
+		return true;
+	}
+
+	return false;
+}
+`endif
 
 function bool GetRandomPlayerByTeam(TeamInfo team, out UTBot OutBot)
 {
