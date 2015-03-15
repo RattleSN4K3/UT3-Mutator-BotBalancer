@@ -255,6 +255,14 @@ function NotifyLogout(Controller Exiting)
 {
 	`Log(name$"::NotifyLogout - Exiting:"@Exiting,bShowDebug,'BotBalancer');
 	super.NotifyLogout(Exiting);
+
+	// abort balancing/etc. if listen player leaves game (by closing server / quitting game)
+	if (WorldInfo.NetMode != NM_DedicatedServer && CacheGame.NumPlayers < 1 && CacheGame.NumTravellingPlayers < 1 && 
+		UTPlayerController(Exiting) != none && UTPlayerController(Exiting).bQuittingToMainMenu)
+	{
+		return;
+	}
+
 	BotsSpawnedOnce.RemoveItem(UTBot(Exiting));
 
 	if (bMatchStarted && UTBot(Exiting) == none)
