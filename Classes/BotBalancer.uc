@@ -30,13 +30,21 @@ class BotBalancer extends Interaction;
 // Select + DPad-Up         = Go to the beginning
 // Select + DPad-Down       = Go to the latest log
 
+// Struct for storing extra data within a map entry (implemented like this to maximize flexibility)
+struct LogStruct
+{
+	var name Key;
+	var string Value;
+	var bool bWarn;
+};
+
 var private editconst BotBalancer Logger;
 
 var LocalPlayer LP;
 var Console ViewportConsole;
 
 /** Holds the scrollback buffer */
-var array<PropertyStruct> Scrollback;
+var array<LogStruct> Scrollback;
 
 /**  Where in the scrollback buffer are we */
 var float SBHead, SBPos;
@@ -117,7 +125,7 @@ static function InitLoggerFor(BotBalancer DefaultLogger, PlayerController InPC, 
 	DefaultLogger.Logger.LP = InLP;
 }
 
-static function StaticAddMessage(string msg, optional name tag)
+static function StaticAddMessage(string msg, optional name tag, optional bool bWarn)
 {
 	local BotBalancer templogger;
 	if (!GetDefault(templogger))
@@ -126,13 +134,14 @@ static function StaticAddMessage(string msg, optional name tag)
 	templogger.AddMessage(msg, tag);
 }
 
-function AddMessage(string msg, optional name tag)
+function AddMessage(string msg, optional name tag, optional bool bWarn)
 {
 	local int index;
 	index = Scrollback.Length;
 	Scrollback.Add(1);
 	Scrollback[index].Key = tag;
 	Scrollback[index].Value = msg;
+	if (bWarn) Scrollback[index].bWarn = true;
 	SBHead += 1;
 }
 
@@ -198,12 +207,20 @@ event PostRender(Canvas Canvas)
 		if (ScrollBack.Length==0)
 			return;
 
-		// change the draw color to white
-		Canvas.SetDrawColor(255,255,255, bFullVisible ? 255 : 100);
-
 		// while we have enough room to draw another line and there are more lines to draw
 		while (y>-yl && idx>=0)
 		{
+			if (Scrollback[idx].bWarn)
+			{
+				// change the draw color to yellow
+				Canvas.SetDrawColor(255,255,0, bFullVisible ? 255 : 100);
+			}
+			else
+			{
+				// change the draw color to white
+				Canvas.SetDrawColor(255,255,255, bFullVisible ? 255 : 100);
+			}
+
 			// move the pen to the correct position
 			Canvas.StrLen(Scrollback[idx].Value, xl, tempY);
 			Canvas.SetPos(0, y-(FMax(yl, tempY)-yl));
@@ -391,6 +408,22 @@ static function LogHud(string msg, optional name tag)
 	else
 	{
 		class'BotBalancer'.default.Logger.AddMessage(msg, tag);
+	}
+`endif // END `notdefined(NO_CONSOLE)
+}
+
+static function WarnHud(string msg, optional name tag)
+{
+	WarnInternal(msg);
+
+`if( `notdefined(NO_CONSOLE) )
+	if (class'BotBalancer'.default.Logger == none && !class'BotBalancer'.static.CreateLogger())
+	{
+		class'BotBalancer'.static.StaticAddMessage(msg, tag, true);
+	}
+	else
+	{
+		class'BotBalancer'.default.Logger.AddMessage(msg, tag, true);
 	}
 `endif // END `notdefined(NO_CONSOLE)
 }

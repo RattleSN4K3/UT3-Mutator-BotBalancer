@@ -1,5 +1,6 @@
 // remove built-in log
 `undefine(Log)
+`undefine(Warn)
 
 /**
  * Expands to an in-line if statement with a log unless FINAL_RELEASE is defined;
@@ -17,4 +18,22 @@
 	`endif
 `else
 `define	Log(msg,cond,tag)	`if(`cond)if(`cond)`{endif}class'BotBalancer'.static.LogHud(`msg`if(`tag),`tag`endif)
+`endif
+
+/**
+ * Expands to an in-line if statement with a warn unless FINAL_RELEASE is defined;
+ *
+ *
+ * @param	msg		the string that should be logged
+ * @param	cond	[opt] the condition that is used to evaluate whether the message should be written
+ * @param	tag		[opt] the tag for the log statement
+ */
+`if( `isdefined(FINAL_RELEASE) )
+	`if(`isdefined(FINAL_RELEASE_DEBUGCONSOLE))
+	`define	Warn(msg,cond,tag)	`if(`cond)if(`cond)`{endif}class'BotBalancer'.static.WarnHud(`msg`if(`tag),`tag`endif)	
+	`else
+	`define	Warn(msg,cond,tag)
+	`endif
+`else
+`define	Warn(msg,cond,tag)	`if(`cond)if(`cond)`{endif}class'BotBalancer'.static.WarnHud(`msg`if(`tag),`tag`endif)
 `endif
