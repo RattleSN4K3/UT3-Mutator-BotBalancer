@@ -63,7 +63,6 @@ auto state InitGRI
 {
 	function NotifyLogin(Controller NewPlayer)
 	{
-		`Log(name$"::NotifyLogin - NewPlayer:"@NewPlayer,,'BotBalancer');
 		global.NotifyLogin(NewPlayer);
 
 		// GRI related initialization
@@ -85,12 +84,17 @@ auto state InitGRI
 
 event Destroyed()
 {
+	`Log(name$"::Destroyed",bShowDebug,'BotBalancer');
+	
 	MyConfig = none;
 	super.Destroyed();
 }
 
 function bool MutatorIsAllowed()
 {
+	`Log(name$"::MutatorIsAllowed",bShowDebug,'BotBalancer');
+	`Log(name$"::MutatorIsAllowed - Return:"@(UTTeamGame(WorldInfo.Game) != None && UTDuelGame(WorldInfo.Game) == None && Super.MutatorIsAllowed()),bShowDebug,'BotBalancer');
+
 	//only allow mutator in Team games (except Duel)
 	return UTTeamGame(WorldInfo.Game) != None && UTDuelGame(WorldInfo.Game) == None && Super.MutatorIsAllowed();
 }
@@ -99,12 +103,13 @@ function InitMutator(string Options, out string ErrorMessage)
 {
 	local string InOpt;
 
-	`Log(name$"::InitMutator - Options:"@Options,,'BotBalancer');
+	`Log(name$"::InitMutator - Options:"@Options,bShowDebug,'BotBalancer');
 	super.InitMutator(Options, ErrorMessage);
 
 	CacheGame = UTTeamGame(WorldInfo.Game);
 	if (CacheGame == none)
 	{
+		`Warn(name$"::InitMutator - No team game. Destroy mutator!!!",bShowDebug,'BotBalancer');
 		Destroy();
 		return;
 	}
@@ -131,8 +136,11 @@ function InitMutator(string Options, out string ErrorMessage)
 // overridden. but not called. called manually
 function SetGRI(GameReplicationInfo GRI)
 {
+	`Log(name$"::SetGRI - GRI:"@GRI,bShowDebug,'BotBalancer');
 	if (GRI == none || bGRIInitialized)
 		return;
+
+	`Log(name$"::SetGRI - Init GRi-related variables once:"@GRI,bShowDebug,'BotBalancer');
 
 	// set random team if desired
 	if (MyConfig.PlayersSide < 0)
@@ -153,11 +161,14 @@ function MatchStarting()
 {
 	local string InOpt;
 
-	`Log(name$"::MatchStarting",,'BotBalancer');
+	`Log(name$"::MatchStarting",bShowDebug,'BotBalancer');
 	super.MatchStarting();
 
 	if (CacheGame == none)
+	{
+		`Warn(name$"::MatchStarting - No cached game. Abort",bShowDebug,'BotBalancer');
 		return;
+	}
 
 	if (MyConfig.UseLevelRecommendation)
 	{
@@ -211,7 +222,7 @@ function NotifyLogin(Controller NewPlayer)
 {
 	local PlayerController PC;
 
-	`Log(name$"::NotifyLogin - NewPlayer:"@NewPlayer,,'BotBalancer');
+	`Log(name$"::NotifyLogin - NewPlayer:"@NewPlayer,bShowDebug,'BotBalancer');
 	super.NotifyLogin(NewPlayer);
 
 	PC = PlayerController(NewPlayer);
@@ -242,7 +253,7 @@ function NotifyLogin(Controller NewPlayer)
 
 function NotifyLogout(Controller Exiting)
 {
-	`Log(name$"::NotifyLogout - Exiting:"@Exiting,,'BotBalancer');
+	`Log(name$"::NotifyLogout - Exiting:"@Exiting,bShowDebug,'BotBalancer');
 	super.NotifyLogout(Exiting);
 	BotsSpawnedOnce.RemoveItem(UTBot(Exiting));
 
@@ -260,17 +271,20 @@ function ModifyPlayer(Pawn Other)
 	local UTBot bot;
 	local BotBalancerHelperPawnDeath pd;
 
-	`Log(name$"::ModifyPlayer - Other:"@Other,,'BotBalancer');
+	`Log(name$"::ModifyPlayer - Other:"@Other,bShowDebug,'BotBalancer');
 	super.ModifyPlayer(Other);
 
 	if (Other == none || UTBot(Other.Controller) == none) return;
 	bot = UTBot(Other.Controller);
 
+	`Log(name$"::ModifyPlayer - Bot spawned...",bShowDebug,'BotBalancer');
 	foreach Other.BasedActors(class'BotBalancerHelperPawnDeath', pd)
 		break;
 
 	if (pd == none)
 	{
+		`Log(name$"::ModifyPlayer - Attach helper for"@Other$"("$bot$")",bShowDebug,'BotBalancer');
+	
 		// attach helper which trigger events for death. this is used to revert bSpawnedByKismet and set bForceAllRed
 		pd = Other.Spawn(class'BotBalancerHelperPawnDeath');
 		pd.SetPlayerDeathDelegate(OnBotDeath_PreCheck, OnBotDeath_PostCheck);
@@ -295,6 +309,7 @@ function ModifyPlayer(Pawn Other)
 		// revert to original if all bots respawned (at least once)
 		if (BotsWaitForRespawn.Length < 1)
 		{
+			`Log(name$"::ModifyPlayer - All bots respawned. Re-set orders",bShowDebug,'BotBalancer');
 			SemaForceAllRed(false);
 
 			// re-set all bot orders for spawned bots
@@ -317,6 +332,7 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 	local PlayerController PC;
 	local BotBalancerTimerHelper parmtimer;
 
+	`Log(name$"::AllowChangeTeam - Other:"@Other$" - num:"@num$" - bNewTeam:"@bNewTeam,bShowDebug,'BotBalancer');
 	PC = PlayerController(Other);
 	if (super.AllowChangeTeam(Other, num, bNewTeam))
 	{
@@ -324,11 +340,15 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 		if (PlayersVsBots && !MyConfig.AllowTeamChangeVsBots && PC != none && 
 			bNewTeam && num != PlayersSide && Other.PlayerReplicationInfo != none && !Other.PlayerReplicationInfo.bOnlySpectator)
 		{
+			`Log(name$"::AllowChangeTeam - No allowed in Vs-Bots mode",bShowDebug,'BotBalancer');
+
 			//@TODO: add support for Multi-Team
 			PC.ReceiveLocalizedMessage(class'UTTeamGameMessage', PlayersSide == 0 ? 1 : 2);
 			return false;
 		}
 	}
+
+	`Log(name$"::AllowChangeTeam - ChangeTeam allowed at first. No find team index...",bShowDebug,'BotBalancer');
 
 	// Note 1: clear forced flag to allow team change for players
 	// Note 2: players connected as players and entering midgame (becomeactive) do call
@@ -338,6 +358,8 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 	//         then represents a valid BecomeActivePlayer procedure
 	if (PC != none && (bNewTeam || PlayersWaitForRequestTeam.Find(PC) != INDEX_NONE))
 	{
+		`Log(name$"::AllowChangeTeam - Allow team change temp.",bShowDebug,'BotBalancer');
+
 		// remove changing player from array
 		PlayersWaitForRequestTeam.RemoveItem(PC);
 		// also remove invalid references, just in case
@@ -369,16 +391,19 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 		num = GetNextTeamIndex(false);
 	}
 
+	`Log(name$"::AllowChangeTeam - Return team:"@num,bShowDebug,'BotBalancer');
 	return True;
 }
 
 function NotifySetTeam(Controller Other, TeamInfo OldTeam, TeamInfo NewTeam, bool bNewTeam)
 {
-	`Log(name$"::NotifySetTeam - Other:"@Other$" - OldTeam:"@OldTeam$" - NewTeam:"@NewTeam$" - bNewTeam:"@bNewTeam,,'BotBalancer');
+	`Log(name$"::NotifySetTeam - Other:"@Other$" - OldTeam:"@OldTeam$" - NewTeam:"@NewTeam$" - bNewTeam:"@bNewTeam,bShowDebug,'BotBalancer');
 	super.NotifySetTeam(Other, OldTeam, NewTeam, bNewTeam);
 
 	if (PlayerController(Other) != none && bNewTeam)
 	{
+		`Log(name$"::NotifySetTeam - New team set for player",bShowDebug,'BotBalancer');
+
 		// remove swapped player from array
 		PlayersWaitForChangeTeam.RemoveItem(PlayerController(Other));
 		// also remove invalid references, just in case
@@ -403,6 +428,7 @@ function bool AllowBecomeActivePlayer(PlayerController P)
 
 	if (ret && P != none)
 	{
+		`Log(name$"::AllowBecomeActivePlayer - From spec to player. Request added for check",bShowDebug,'BotBalancer');
 		PlayersWaitForRequestTeam.AddItem(P);
 
 		// as other mutators can disallow becoming active, we need to remove this PC from PlayersWaitForRequestTeam
@@ -442,7 +468,7 @@ function Mutate(string MutateString, PlayerController Sender)
 	local int i;
 	local UTBot bot;
 
-	`Log(name$"::Mutate - MutateString:"@MutateString$" - Sender:"@Sender,,'BotBalancer');
+	`Log(name$"::Mutate - MutateString:"@MutateString$" - Sender:"@Sender,bShowDebug,'BotBalancer');
 	super.Mutate(MutateString, Sender);
 
 	if (Sender == none)
@@ -538,10 +564,12 @@ event TimerBecamePlayer(PlayerController PC)
 function OnBotDeath_PreCheck(Pawn Other, Object Sender)
 {
 	local Controller C;
-	`log(name$"::OnBotDeath_PreCheck - Other:"@Other$" - Sender:"@Sender,,'BotBalancer');
+	`log(name$"::OnBotDeath_PreCheck - Other:"@Other$" - Sender:"@Sender,bShowDebug,'BotBalancer');
 	
 	if (GetController(Other, C) && UTBot(C) != none)
 	{
+		`log(name$"::OnBotDeath_PreCheck - Clear vars",bShowDebug,'BotBalancer');
+
 		// revert so bot spawns normally (and does not get destroyed)
 		UTBot(C).bSpawnedByKismet = false;
 		BotsWaitForRespawn.AddItem(UTBot(C));
@@ -554,7 +582,7 @@ function OnBotDeath_PreCheck(Pawn Other, Object Sender)
 
 function OnBotDeath_PostCheck(Pawn Other, Actor Sender)
 {
-	`log(name$"::OnBotDeath_PostCheck - Other:"@Other$" - Sender:"@Sender,,'BotBalancer');
+	`log(name$"::OnBotDeath_PostCheck - Other:"@Other$" - Sender:"@Sender,bShowDebug,'BotBalancer');
 	//CacheGame.bForceAllRed = false;
 }
 
@@ -570,6 +598,7 @@ function InitConfig()
 	MyConfig.Validate();
 
 	MyConfig.SaveConfigCustom();
+	`log(name$"::InitConfig - Config saved.",bShowDebug,'BotBalancer');
 
 	// set runtime vars from config values
 	bPlayersBalanceTeams = MyConfig.bPlayersBalanceTeams;
@@ -751,6 +780,7 @@ function BalanceBotsTeams()
 	local int SwitchCount, diff;
 	local UTBot Bot;
 	
+	`log(name$"::BalanceBotsTeams",bShowDebug,'BotBalancer');
 	if (GetAdjustedTeamPlayerCount(PlayersCount, TeamsCount))
 	{
 		// find team with lowest real player count (prefer team with lower net players)
@@ -782,11 +812,15 @@ function BalanceBotsTeams()
 		}
 	}
 
+	`log(name$"::BalanceBotsTeams - Change bots count:"@SwitchCount,bShowDebug,'BotBalancer');
 	for (i=0; i<SwitchCount; i++)
 	{
 		// change from highest to lowest team
 		if (!GetRandomPlayerByTeam(WorldInfo.GRI.Teams[HighestIndex], bot))
+		{
+			`warn(name$"::BalanceBotsTeams - Unable to change bot for"@bot$". Abort...",bShowDebug,'BotBalancer');
 			break;
+		}
 
 		SwitchBot(bot, LowestIndex);
 	}
