@@ -329,12 +329,14 @@ function ModifyPlayer(Pawn Other)
 
 function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 {
+	local bool ret;
 	local PlayerController PC;
 	local BotBalancerTimerHelper parmtimer;
 
 	`Log(name$"::AllowChangeTeam - Other:"@Other$" - num:"@num$" - bNewTeam:"@bNewTeam,bShowDebug,'BotBalancer');
+	ret = super.AllowChangeTeam(Other, num, bNewTeam);
 	PC = PlayerController(Other);
-	if (super.AllowChangeTeam(Other, num, bNewTeam))
+	if (ret)
 	{
 		// disallow changing team if PlayersVsBots is set (but only if not a spectator)
 		if (PlayersVsBots && !MyConfig.AllowTeamChangeVsBots && PC != none && 
@@ -392,7 +394,7 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 	}
 
 	`Log(name$"::AllowChangeTeam - Return team:"@num,bShowDebug,'BotBalancer');
-	return True;
+	return ret;
 }
 
 function NotifySetTeam(Controller Other, TeamInfo OldTeam, TeamInfo NewTeam, bool bNewTeam)
