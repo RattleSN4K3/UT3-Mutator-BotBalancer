@@ -1,6 +1,5 @@
 class BotBalancerConfig extends Object
-	config(BotBalancer)
-	perobjectconfig;
+	config(BotBalancer);
 
 //`define ALLOW_PERSISTENT 1
 
