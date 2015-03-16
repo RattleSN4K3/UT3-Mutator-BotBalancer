@@ -142,7 +142,7 @@ DefaultProperties
 	PropertyMappings(0)=(ID=0,Name="BotRatio",ColumnHeaderText="Bot/Player Ratio",MappingType=PVMT_Ranged,MinVal=0.0001,MaxVal=64.0,RangeIncrement=0.5)
 	PropertyDescriptions(0)="The number of bots to balance for each player in the opponent team. Basically this values represents how much player a human player results. A value of 2.0 would mean that a human player is as strong as 2 bots."
 
-	Properties(1)=(PropertyID=2,Data=(Type=SDT_Int32))
+	Properties(1)=(PropertyID=20,Data=(Type=SDT_Int32))
 	PropertyMappings(1)=(ID=20,Name="UseLevelRecommendation",ColumnHeaderText="Use Level Recommendation",MappingType=PVMT_IDMapped,ValueMappings=((ID=0,Name="no "),(ID=1,Name="yes ")))
 	PropertyDescriptions(1)="Whether to use the level recommended player count for each map. Once  this is set, the player count will be adjusted to what ever the map has defined as min and max player count. A mean value will be used as bot player count."
 
