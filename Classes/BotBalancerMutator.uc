@@ -63,10 +63,10 @@ auto state InitGRI
 {
 	function NotifyLogin(Controller NewPlayer)
 	{
-		global.NotifyLogin(NewPlayer);
-
 		// GRI related initialization
 		SetGRI(WorldInfo.GRI);
+		
+		global.NotifyLogin(NewPlayer);
 	}
 	
 	function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
