@@ -1,3 +1,14 @@
+Alpha 4
+- Fixed: Config uses per-object config
+- Fixed: Restoring config in UI doesn't work
+- Fixed: AllowChangeTeam breaks calling chain
+- Added: Balancing teams when players switch to/from spectator
+- Added: Options to adjust level recommended player count
+- Added: In-game HUD log (mainly for PS3)
+- Added: UI support for PS3 (including saving and restoring to defaults)
+- Added: Experimental keyboard support for editboxes on PS3 (currently no editbox used)
+- Changed: Settings are grouped for WebAdmin und UI
+
 Alpha 3
 - Fixed: Imbalance with bots when mutator uses custom balancing feature
 - Added: Option to use random team for Players. vs. Bots

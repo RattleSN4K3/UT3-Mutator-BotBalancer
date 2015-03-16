@@ -1,0 +1,25 @@
+Use frontend ("Cooking" tab)
+  Packages: BotBalancer
+  Untick every option
+  Select Mod type "Mutator"
+
+
+Use this ini:
+[BotBalancerMutator UTUIDataProvider_Mutator]
+ClassName=BotBalancer.BotBalancerMutator
+FriendlyName=BotBalancer
+Description=Balances the teams based on set conditions (Players vs. Bots, Bot-ratio, Map recommended players, ...)
+GroupNames=
+UIConfigScene=BotBalancer.UI.FrontEnd.ConfigMenu
+bStandaloneOnly=False
+BitValue=0
+bRemoveOn360=False
+bRemoveOnPC=False
+bRemoveOnPS3=False
+
+[LoadForAllGameTypes]
+Package=BotBalancer
+
+[Engine.PackagesToFullyLoadForDLC]
+MapName=UTFrontend
+Package=BotBalancer
