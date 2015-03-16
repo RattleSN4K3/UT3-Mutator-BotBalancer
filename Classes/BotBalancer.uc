@@ -25,8 +25,7 @@ class BotBalancer extends Interaction;
 // Select + X               = Toggle opacity
 // Select + /\              = Toggle visibility
 // Select + LeftStick       = Scroll up and down (1x)
-// Select + L3 + LeftStick  = Scroll up (5x)
-// Select + L3 + LeftStick  = Scroll down (5x)
+// Select + L3 + LeftStick  = Scroll up and down (5x)
 // Select + DPad-Up         = Go to the beginning
 // Select + DPad-Down       = Go to the latest log
 
