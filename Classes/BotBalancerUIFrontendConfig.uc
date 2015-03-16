@@ -62,13 +62,14 @@ event PostInitialize()
 {
 	`Log(name$"::PostInitialize",,'BotBalancer');
 
-	//AdjustSkin();
-	super.PostInitialize();
-
 	OptionsPage = UTUITabPage_DynamicOptions(FindChild('pnlOptions', True));
 	//OptionsPage.OnOptionChanged = OnOptionChanged;
+	if (IsConsole()) OptionsPage.OnOptionFocused = OnOptionList_OptionFocused;
 
 	OptionsList = UTUIDynamicOptionList(FindChild('lstOptions', True));
+
+	//AdjustSkin();
+	super.PostInitialize();
 
 	SetupMenuOptions();
 }
@@ -142,16 +143,21 @@ function SetupButtonBar()
 	local string str;
 	`Log(name$"::SetupButtonBar",,'BotBalancer');
 
-	// show START button for accept button
-	str = Localize("ButtonCallouts", "Accept", "UTGameUI");
-	str = ReplMarkup(str, "<StringAliasMap:Accept>", "<StringAliasMap:Start>");
-
 	if (ButtonBar != none)
 	{
+		// show START button for accept button
+		str = Localize("ButtonCallouts", "Accept", "UTGameUI");
+		str = ReplMarkup(str, "<StringAliasMap:Accept>", "<StringAliasMap:Start>");
+
 		ButtonBar.Clear();
 		ButtonBar.AppendButton("<Strings:UTGameUI.ButtonCallouts.Back>", OnButtonBar_Back);
 		ButtonBar.AppendButton(str, OnButtonBar_Accept);
 		ButtonBar.AppendButton("<Strings:UTGameUI.ButtonCallouts.ResetToDefaults>", OnButtonBar_ResetToDefaults);
+
+		if (OptionsPage != none && IsConsole())
+		{
+			OptionsPage.SetupButtonBar(ButtonBar);
+		}
 	}
 }
 
@@ -508,6 +514,16 @@ function bool PopulateMenuObject(GeneratedObjectInfo OI)
 		// DOES NOT WORK WITH SCROLLING
 		//OI.OptionObj.SetVisibility(false);
 
+		// change template optiontype for headers/separators to prevent enabling keyboard
+		if (IsConsole())
+		{
+			i = OptionsList.DynamicOptionTemplates.Find('OptionName', OI.OptionProviderName);
+			if (i != INDEX_NONE)
+			{
+				OptionsList.DynamicOptionTemplates[i].OptionType = UTOT_MAX;
+			}
+		}
+
 		CurEditBox = UIEditBox(OI.OptionObj);
 		if (CurEditBox != none)
 		{
@@ -569,6 +585,12 @@ function bool PopulateMenuObject(GeneratedObjectInfo OI)
 //**********************************************************************************
 // UI callbacks
 //**********************************************************************************
+
+/** Callback for when an option is focused */
+function OnOptionList_OptionFocused(UIScreenObject InObject, UIDataProvider OptionProvider)
+{
+	SetupButtonBar();
+}
 
 /** Button bar callbacks */
 function bool OnButtonBar_Accept(UIScreenObject InButton, int PlayerIndex)
