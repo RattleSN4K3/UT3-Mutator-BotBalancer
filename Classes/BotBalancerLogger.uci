@@ -1,6 +1,28 @@
 // remove built-in log
+`undefine(Logd)
 `undefine(Log)
 `undefine(Warn)
+
+/**
+ * Expands to an in-line if statement with a log if debug is defined;
+ * it expands to nothing if debug is not defined. The debug macro takes
+ * its value from the -debug flag on the script compilation command line.
+ *
+ * Also demonstrates how to use backslashes to declare a multi-line macro.
+ *
+ * @param	msg		the string that should be logged
+ * @param	cond	[opt] the condition that is used to evaluate whether the message should be written
+ * @param	tag		[opt] the tag for the log statement
+ */
+`if(`isdefined(debug))
+`define Logd(msg,cond,tag)\
+  `if(`cond)\
+	if (`cond)\
+  `{endif}\
+	log(`msg`if(`tag),`tag`endif)
+`else
+`define Logd
+`endif
 
 /**
  * Expands to an in-line if statement with a log unless FINAL_RELEASE is defined;
