@@ -55,6 +55,9 @@ var float BotRatio;
 /** Team index. Always valid index to GRI.Teams. Never 255/unset */
 var byte PlayersSide;
 
+/** If custom bot class has been replaced */
+var bool bCustomBotClassReplaced;
+
 //**********************************************************************************
 // State for GRI initialization
 //**********************************************************************************
@@ -211,6 +214,15 @@ function MatchStarting()
 	{
 		InOpt = class'GameInfo'.static.ParseOption(CacheGame.ServerOptions, "BotRatio");
 		BotRatio = float(InOpt);
+	}
+
+	// if another mutator changes bots, store original one and
+	// ensure we are using the NullBot for proper balancing
+	if (CacheGame.BotClass != class'BotBalancerNullBot')
+	{
+		CacheBotClass = CacheGame.BotClass;
+		CacheGame.BotClass = class'BotBalancerNullBot';
+		bCustomBotClassReplaced = true;
 	}
 
 	bMatchStarted = true;
