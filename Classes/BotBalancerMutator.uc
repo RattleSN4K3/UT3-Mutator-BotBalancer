@@ -670,12 +670,14 @@ function int GetNextTeamIndex(bool bBot)
 	local UTTeamInfo BotTeam;
 	local name packagename;
 	local bool bSwap;
+	local int TeamIndex;
 
 	local int i, index, count, prefer;
 	local array<int> PlayersCount, TeamsCount;
 	
 	if (PlayersVsBots && bBot)
 	{
+		// check if class is an official one (in which case it is always only 2 teams)
 		packagename = CacheGame.class.GetPackageName();
 		switch (packagename)
 		{
@@ -757,16 +759,18 @@ function int GetNextTeamIndex(bool bBot)
 		// to prevent using always the Red team, we swap that flag temporarily
 		bSwap = CacheGame.bForceAllRed;
 		CacheGame.bForceAllRed = false;
-		BotTeam = CacheGame.GetBotTeam();
-		CacheGame.bForceAllRed = bSwap;
+		
+		// find the proper team index for the player
+		if (bBot) BotTeam = CacheGame.GetBotTeam();
+		if (BotTeam != none) TeamIndex = BotTeam.TeamIndex;
+		else TeamIndex = CacheGame.PickTeam(0, none);
 
-		if (BotTeam != none)
-		{
-			return BotTeam.TeamIndex;
-		}
+		CacheGame.bForceAllRed = bSwap;
+		return TeamIndex;
 	}
 
-	return 0;
+	// use random index if possible (otherwise unset team)
+	return (WorldInfo.GRI != none ? Rand(WorldInfo.GRI.Teams.Length) : int(DEFAULT_TEAM_UNSET));
 }
 
 function AddBots(int InDesiredPlayerCount)
