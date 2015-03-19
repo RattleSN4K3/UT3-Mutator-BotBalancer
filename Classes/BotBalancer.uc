@@ -121,6 +121,7 @@ static function InitLoggerFor(BotBalancer DefaultLogger, PlayerController InPC, 
 
 	DefaultLogger.Logger.Scrollback = DefaultLogger.Scrollback;
 	DefaultLogger.Logger.SBHead = DefaultLogger.Scrollback.Length-1;
+	DefaultLogger.Logger.SBPos = 0;
 	DefaultLogger.Logger.ViewportConsole = InLP.ViewportClient.ViewportConsole;
 	DefaultLogger.Logger.LP = InLP;
 }
@@ -142,7 +143,9 @@ function AddMessage(string msg, optional name tag, optional bool bWarn)
 	Scrollback[index].Key = tag;
 	Scrollback[index].Value = msg;
 	if (bWarn) Scrollback[index].bWarn = true;
+
 	SBHead += 1;
+	if (SBPos > 0) SBPos += 1;
 }
 
 /**
@@ -186,6 +189,16 @@ event PostRender(Canvas Canvas)
 		// figure out which element of the scrollback buffer to should appear first (at the top of the screen)
 		idx = SBHead - int(SBPos);
 		y = Height-16-(yl*2);
+
+		// draw dashed line
+		if (SBPos > 0)
+		{
+			// move the pen up + 12 pixels of buffer (for the green borders and some space)
+			Canvas.SetPos(0,Height-2*yl-5);
+
+			// draw the bottom status region border
+			Canvas.DrawTextClipped("... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ");
+		}
 
 		// change the draw color to green
 		Canvas.SetDrawColor(0,255,0,bFullVisible ? 255 : 100);
