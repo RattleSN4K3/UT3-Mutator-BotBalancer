@@ -509,6 +509,7 @@ function Mutate(string MutateString, PlayerController Sender)
 	local string str, value, value2;
 	local int i;
 	local UTBot bot;
+	local int Counts[2];
 
 	`Log(name$"::Mutate - MutateString:"@MutateString$" - Sender:"@Sender,bShowDebug,'BotBalancer');
 	super.Mutate(MutateString, Sender);
@@ -560,6 +561,34 @@ function Mutate(string MutateString, PlayerController Sender)
 		return;
 	}
 	
+	str = "BB CountTeams"; // BB CountTeams
+	if (Left(MutateString, Len(str)) ~= str)
+	{
+		for (i=0;i<WorldInfo.GRI.PRIArray.Length;i++)
+		{
+			if (WorldInfo.GRI.PRIArray[i].Team != none && WorldInfo.GRI.PRIArray[i].Team.TeamIndex<2)
+			{
+				Counts[WorldInfo.GRI.PRIArray[i].Team.TeamIndex]++;
+			}
+		}
+
+		Sender.ClientMessage("Team 0:"@Counts[0]$"  Team 1:"@Counts[1]);
+		return;
+	}
+
+	str = "BB ListPlayers"; // BB CountTeams
+	if (Left(MutateString, Len(str)) ~= str)
+	{
+		value = "";
+		for (i=0;i<WorldInfo.GRI.PRIArray.Length;i++)
+		{
+			value $= WorldInfo.GRI.PRIArray[i].GetHumanReadableName()$" ("$WorldInfo.GRI.PRIArray[i]$")";
+			value $= "\n";
+		}
+
+		Sender.ClientMessage(value);
+		return;
+	}
 }
 `endif
 
@@ -672,8 +701,10 @@ function int GetNextTeamIndex(bool bBot)
 	local bool bSwap;
 	local int TeamIndex;
 
-	local int i, index, count, prefer;
-	local array<int> PlayersCount, TeamsCount;
+	local int i, index, prefer;
+	local float count;
+	local array<int> PlayersCount;
+	local array<float> TeamsCount;
 	
 	if (PlayersVsBots && bBot)
 	{
@@ -836,7 +867,8 @@ function ResetBotOrders(array<UTBot> bots)
 
 function BalanceBotsTeams()
 {
-	local array<int> PlayersCount, TeamsCount;
+	local array<int> PlayersCount;
+	local array<float> TeamsCount;
 	local int i;
 	local int LowestCount, LowestIndex;
 	local int HighestCount, HighestIndex;
@@ -989,7 +1021,7 @@ function bool GetRandomPlayerByTeam(TeamInfo team, out UTBot OutBot)
 	return false;
 }
 
-function bool GetAdjustedTeamPlayerCount(out array<int> PlayersCount, out array<int> TeamsCount)
+function bool GetAdjustedTeamPlayerCount(out array<int> PlayersCount, out array<float> TeamsCount)
 {
 	local int i, index, count;
 
@@ -1020,7 +1052,7 @@ function bool GetAdjustedTeamPlayerCount(out array<int> PlayersCount, out array<
 		count = WorldInfo.GRI.Teams[i].Size - PlayersCount[i];
 
 		// use botratio to know how many proper player a team would have
-		TeamsCount[i] = PlayersCount[i]*BotRatio + count;
+		TeamsCount[i] = float(PlayersCount[i])*BotRatio + float(count);
 	}
 
 	return true;
