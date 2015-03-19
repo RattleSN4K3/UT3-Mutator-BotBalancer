@@ -1,3 +1,5 @@
+// Parameterized timer (multiple used and split by the called event)
+
 class BotBalancerTimerHelper extends Object;
 
 var PlayerController PC;

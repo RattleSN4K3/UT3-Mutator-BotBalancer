@@ -71,7 +71,7 @@ static final function BotBalancerConfig GetConfig()
 
 // For config support
 // called by UI menu
-/*native*/ simulated static function string Localize( string SectionName, string KeyName, string PackageName )
+/*native*/ static function string Localize( string SectionName, string KeyName, string PackageName )
 {
 	local BotBalancerConfig cfg;
 
@@ -108,9 +108,9 @@ final function SaveConfigCustom()
 `if(`notdefined(FINAL_RELEASE))
 `if(`notdefined(ALLOW_PERSISTENT))
 `if(`isdefined(CLEAR_PERSISTENT))
-			// as persitent registry entries are not clear (only in editor)
+			// as persitent registry entries are not cleared (only in editor)
 			// we have to create an object within (living inside) the registry provider
-			// which lets us have access into protected members to remove the config property
+			// which let us have access into protected members to remove the config property
 			remover = new(RegistryProvider) class'BotBalancerPersistentConfigHelper';
 `endif
 `endif
@@ -162,7 +162,7 @@ final function LoadConfigCustom()
 	local UIProviderScriptFieldValue field;
 	local name n;
 
-	// only if console we need to restore values from the registry
+	// only on console, we need to restore values from the registry
 	if (IsConsole())
 	{
 		if (GetRegistry(RegistryProvider))
@@ -220,7 +220,7 @@ final function Validate()
 // Somehow the archetype values are changed. We need to reset the value hardcoded
 function ResetConfig()
 {
-	`Log(name$"::ResetConfig",bShowDebug,'NoMoreDemoGuy');
+	`Log(name$"::ResetConfig",bShowDebug,'BotBalancer');
 
 	BotRatio=2.0;
 

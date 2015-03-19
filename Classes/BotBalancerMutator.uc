@@ -55,7 +55,7 @@ var float BotRatio;
 /** Team index. Always valid index to GRI.Teams. Never 255/unset */
 var byte PlayersSide;
 
-/** If custom bot class has been replaced */
+/** Set if custom bot class has been replaced */
 var bool bCustomBotClassReplaced;
 
 //**********************************************************************************
@@ -84,6 +84,25 @@ auto state InitGRI
 //**********************************************************************************
 // Inherited functions
 //**********************************************************************************
+
+`if(`notdefined(FINAL_RELEASE))
+//
+// Called immediately before gameplay begins.
+//
+event PreBeginPlay()
+{
+	`Log(name$"::PreBeginPlay",bShowDebug,'BotBalancer');
+	super.PreBeginPlay();
+}
+
+// Called immediately after gameplay begins.
+//
+event PostBeginPlay()
+{
+	`Log(name$"::PostBeginPlay",bShowDebug,'BotBalancer');
+	super.PostBeginPlay();
+}
+`endif
 
 event Destroyed()
 {
@@ -145,15 +164,10 @@ function SetGRI(GameReplicationInfo GRI)
 
 	`Log(name$"::SetGRI - Init GRi-related variables once:"@GRI,bShowDebug,'BotBalancer');
 
-	// set random team if desired
-	if (MyConfig.PlayersSide < 0)
-		PlayersSide = Rand(WorldInfo.GRI.Teams.Length);
-	else if (MyConfig.PlayersSide < WorldInfo.GRI.Teams.Length)
-		PlayersSide = MyConfig.PlayersSide;
-	//else if (MyConfig.PlayersSide < DEFAULT_TEAM_UNSET)
-	//	PlayersSide = DEFAULT_TEAM_PLAYER;
-	else
-		PlayersSide = DEFAULT_TEAM_PLAYER;
+	if (MyConfig != none)
+	{
+		SetPlayersSide();
+	}
 
 	bGRIInitialized = true;
 	GotoState('');
@@ -230,6 +244,12 @@ function MatchStarting()
 }
 
 `if(`notdefined(FINAL_RELEASE))
+function ModifyLogin(out string Portal, out string Options)
+{
+	`Log(name$"::ModifyLogin - Portal:"@Portal$" - Options:"@Options,bShowDebug,'BotBalancer');
+	super.ModifyLogin(Portal, Options);
+}
+
 function NotifyLogin(Controller NewPlayer)
 {
 	local PlayerController PC;
@@ -602,6 +622,7 @@ function OnBotDeath_PreCheck(Pawn Other, Object Sender)
 	CacheGame.bForceAllRed = true;
 }
 
+//@TODO: remove? as it is unused
 function OnBotDeath_PostCheck(Pawn Other, Actor Sender)
 {
 	`log(name$"::OnBotDeath_PostCheck - Other:"@Other$" - Sender:"@Sender,bShowDebug,'BotBalancer');
@@ -626,6 +647,22 @@ function InitConfig()
 	bPlayersBalanceTeams = MyConfig.bPlayersBalanceTeams;
 	PlayersVsBots = MyConfig.PlayersVsBots;
 	BotRatio = MyConfig.BotRatio;
+
+	// if GRI was already initialized, set PlayersSide again
+	if (bGRIInitialized) SetPlayersSide();
+}
+
+function SetPlayersSide()
+{
+	// set random team if desired
+	if (MyConfig.PlayersSide < 0)
+		PlayersSide = Rand(WorldInfo.GRI.Teams.Length);
+	else if (MyConfig.PlayersSide < WorldInfo.GRI.Teams.Length)
+		PlayersSide = MyConfig.PlayersSide;
+	//else if (MyConfig.PlayersSide < DEFAULT_TEAM_UNSET)
+	//	PlayersSide = DEFAULT_TEAM_PLAYER;
+	else
+		PlayersSide = DEFAULT_TEAM_PLAYER;
 }
 
 function int GetNextTeamIndex(bool bBot)

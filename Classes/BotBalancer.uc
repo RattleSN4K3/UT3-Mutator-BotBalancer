@@ -11,25 +11,26 @@ class BotBalancer extends Interaction;
 // INGAME LOG
 //
 // Controls Keyboard:
-// Shift + Space	        = Toggle opacity
-// Shift + BackSpace	    = Toggle visibility
-// Shift + MouseScroll	    = Scroll up and down
-// Shift + PageUp			= Scroll up (1 line)
-// Shift + PageDown	        = Scroll down (1 line)
-// Shift + Ctrl + PageUp	= Scroll up (5 lines)
-// Shift + Ctrl + PageDown	= Scroll down (5 lines)
-// Shift + Home	            = Go to the beginning
-// Shift + End	            = Go to the latest log
+// Shift + Space	            = Toggle opacity
+// Shift + BackSpace	        = Toggle visibility
+// Shift + MouseScroll	        = Scroll up and down (1 line)
+// Shift + CTRL + MouseScroll   = Scroll up and down (5 lines)
+// Shift + PageUp			    = Scroll up (1 line)
+// Shift + PageDown	            = Scroll down (1 line)
+// Shift + Ctrl + PageUp	    = Scroll up (5 lines)
+// Shift + Ctrl + PageDown	    = Scroll down (5 lines)
+// Shift + Home	                = Go to the beginning
+// Shift + End	                = Go to the latest log
 
 // Controls PS3:
-// Select + X               = Toggle opacity
-// Select + /\              = Toggle visibility
-// Select + LeftStick       = Scroll up and down (1x)
-// Select + L3 + LeftStick  = Scroll up and down (5x)
-// Select + DPad-Up         = Go to the beginning
-// Select + DPad-Down       = Go to the latest log
+// Select + X                   = Toggle opacity
+// Select + /\                  = Toggle visibility
+// Select + LeftStick           = Scroll up and down (1x)
+// Select + L3 + LeftStick      = Scroll up and down (5x)
+// Select + DPad-Up             = Go to the beginning
+// Select + DPad-Down           = Go to the latest log
 
-// Struct for storing extra data within a map entry (implemented like this to maximize flexibility)
+// Struct for storing log messages
 struct LogStruct
 {
 	var name Key;
@@ -169,9 +170,9 @@ event PostRender(Canvas Canvas)
 		Height = Canvas.ClipY*0.75;
 
 		// change the draw color to white
-	    Canvas.SetDrawColor(255,255,255,bFullVisible ? 255: 66);
+		Canvas.SetDrawColor(255,255,255,bFullVisible ? 255: 66);
 
-	    // move the pen to the top-left pixel
+		// move the pen to the top-left pixel
 		Canvas.SetPos(0,0);
 
 		// draw the black background tile
