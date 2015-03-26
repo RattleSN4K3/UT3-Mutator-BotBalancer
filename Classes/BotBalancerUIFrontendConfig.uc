@@ -45,10 +45,6 @@ var() transient class<Object> ConfigClass;
 /** Reference to the messagebox scene. */
 var transient UTUIScene_MessageBox MessageBoxReference;
 
-// Reference to the options page and list
-var transient UTUITabPage_DynamicOptions OptionsPage;
-var transient UTUIDynamicOptionList OptionsList;
-
 var transient UISkin OriginalSkin;
 
 //**********************************************************************************
@@ -62,11 +58,6 @@ event PostInitialize()
 
 	//AdjustSkin();
 	super.PostInitialize();
-
-	OptionsPage = UTUITabPage_DynamicOptions(FindChild('pnlOptions', True));
-	//OptionsPage.OnOptionChanged = OnOptionChanged;
-
-	OptionsList = UTUIDynamicOptionList(FindChild('lstOptions', True));
 
 	SetupMenuOptions();
 }
@@ -166,23 +157,17 @@ function bool HandleInputKey( const out InputEventParameters EventParms )
 
 	`Log(name$"::HandleInputKey",,'BotBalancer');
 
-	// Let the binding list get first chance at the input because the user may be binding a key.
-	bResult=OptionsPage != none && OptionsPage.HandleInputKey(EventParms);
-
-	if(bResult == false)
+	if(EventParms.EventType==IE_Released)
 	{
-		if(EventParms.EventType==IE_Released)
+		if(EventParms.InputKeyName=='XboxTypeS_B' || EventParms.InputKeyName=='Escape')
 		{
-			if(EventParms.InputKeyName=='XboxTypeS_B' || EventParms.InputKeyName=='Escape')
-			{
-				OnBack();
-				bResult=true;
-			}
-			else if(EventParms.InputKeyName=='XboxTypeS_LeftTrigger')
-			{
-				OnResetToDefaults();
-				bResult=true;
-			}
+			OnBack();
+			bResult=true;
+		}
+		else if(EventParms.InputKeyName=='XboxTypeS_LeftTrigger')
+		{
+			OnResetToDefaults();
+			bResult=true;
 		}
 	}
 
@@ -196,85 +181,11 @@ function bool HandleInputKey( const out InputEventParameters EventParms )
 // Initializes the menu option templates, and regenerates the option list
 function SetupMenuOptions()
 {
-	local DynamicMenuOption CurMenuOpt, EmptyMenuOpt;
-	local int i;
-	local name n;
-
-	`Log(name$"::SetupMenuOptions",,'BotBalancer');
-
-	if (OptionsPage == none || OptionsList == none)
-		return;
-
-	bRegeneratingOptions = True;
-	OptionsList.DynamicOptionTemplates.Length = 0;
-
-	for (i=0; i<SettingsClass.default.PropertyMappings.Length; i++) 
-	{
-		n = SettingsClass.default.PropertyMappings[i].Name;
-
-		CurMenuOpt = EmptyMenuOpt;
-		CurMenuOpt.OptionName = n;
-		CurMenuOpt.OptionType = UTOT_CheckBox;
-		CurMenuOpt.FriendlyName = SettingsClass.default.PropertyMappings[i].ColumnHeaderText;
-		CurMenuOpt.Description = GetDescriptionOfSetting(n);
-
-		if (PopulateMenuOption(n, CurMenuOpt))
-		{
-			OptionsList.DynamicOptionTemplates.AddItem(CurMenuOpt);
-		}
-	}
-
-	// Generate the option controls
-	i = OptionsList.CurrentIndex;
-
-	OptionsList.OnSetupOptionBindings = SetupOptionBindings;
-	OptionsList.RegenerateOptions();
-
-	// If the list index was set, return to the previous position
-	FocusList(i);
 }
 
 // Setup the data source bindings (but not the values)
 function SetupOptionBindings()
 {
-	local UIObject CurObject;
-	local int i;
-	local name n;
-	local string value, newvalue;
-
-	local Settings SettingsObj;
-	local int PropertyId;
-
-	`Log(name$"::SetupOptionBindings",,'BotBalancer');
-
-	SettingsObj = new SettingsClass;
-	SettingsObj.SetSpecialValue('WebAdmin_Init', "");
-
-	// Generate list collections
-	for (i=0; i<OptionsList.GeneratedObjects.Length; i++)
-	{
-		PopulateMenuObject(OptionsList.GeneratedObjects[i]);
-	}
-
-	// Set values to menu items
-	for (i=0; i<SettingsObj.PropertyMappings.Length; i++) 
-	{
-		n = SettingsObj.PropertyMappings[i].Name;
-		if (SettingsObj.GetPropertyId(n, PropertyId) &&
-			SettingsObj.HasProperty(PropertyId) &&
-			FindOptionObjectByName(OptionsList, n, CurObject))
-		{
-			value = SettingsObj.GetPropertyAsString(PropertyId);
-			if (GetCollectionIndexValue(n, value, newvalue))
-			{
-				value = newvalue;
-			}
-
-			SetOptionObjectValue(CurObject, value);
-		}
-	}
-
-	bRegeneratingOptions = False;
 }
 
 function bool PopulateMenuOption(name PropertyName, out DynamicMenuOption menuopt)
@@ -557,10 +468,6 @@ function OnResetToDefaults_Confirm(UTUIScene_MessageBox MessageBox, int Selectio
 		ResetToDefaults();
 		CloseScene(self);
 	}
-	else if (OptionsPage != none)
-	{
-		OptionsPage.OptionList.SetFocus(none);
-	}
 }
 
 //**********************************************************************************
@@ -575,31 +482,12 @@ function OnBack()
 
 function OnAccept()
 {
-	local UIObject CurObject;
-	local int i;
-	local name n;
-	local string value, newvalue;
-
 	local Settings SettingsObj;
 
 	`Log(name$"::OnAccept",,'BotBalancer');
 
 	SettingsObj = new SettingsClass;
 	SettingsObj.SetSpecialValue('WebAdmin_Init', "");
-	for (i=0; i<SettingsObj.PropertyMappings.Length; i++) 
-	{
-		n = SettingsObj.PropertyMappings[i].Name;
-		if (FindOptionObjectByName(OptionsList, n, CurObject) &&
-			GetOptionObjectValue(CurObject, value))
-		{
-			if (GetCollectionIndexId(n, value, newvalue))
-			{
-				value = newvalue;
-			}
-
-			SettingsObj.SetPropertyFromStringByName(n, value);
-		}
-	}
 
 	`Log(name$"::OnAccept - Save config",,'BotBalancer');
 	SettingsObj.SetSpecialValue('WebAdmin_Save', "");
@@ -661,27 +549,6 @@ function OnResetToDefaults()
 
 function FocusList(optional int index = INDEX_NONE)
 {
-	local int i;
-
-	if (OptionsList == none)
-		return;
-
-	if (index == INDEX_NONE)
-		index = 0;
-	
-	// find element which is not a separator
-	for (i=index; i<OptionsList.GeneratedObjects.Length; i++)
-	{
-		if (Left(OptionsList.GeneratedObjects[i].OptionProviderName, 9) ~= "Separator") continue;
-
-		index = i;
-		break;
-	}
-	
-	OptionsList.GeneratedObjects[index].OptionObj.SetFocus(None);
-
-	// Disable the initiated selection change animation, so that it jumps to the focused object immediately
-	OptionsList.bAnimatingBGPrefab = False;
 }
 
 function string GetDescriptionOfSetting(name PropertyName, optional Settings Setts)
