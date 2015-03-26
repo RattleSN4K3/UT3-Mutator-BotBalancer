@@ -1,6 +1,5 @@
 class BotBalancerConfig extends Object
-	config(BotBalancer)
-	perobjectconfig;
+	config(BotBalancer);
 
 `if(`notdefined(FINAL_RELEASE))
 	var bool bShowDebug;
