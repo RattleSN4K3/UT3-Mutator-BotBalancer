@@ -1,5 +1,4 @@
-class BotBalancerConfig extends Object
-	config(BotBalancer);
+class BotBalancerConfig extends Object;
 
 `if(`notdefined(FINAL_RELEASE))
 	var bool bShowDebug;
@@ -9,15 +8,15 @@ class BotBalancerConfig extends Object
 // Config variables
 //**********************************************************************************
 
-var() config bool UseLevelRecommendation;
-var() config bool PlayersVsBots;
-var() config int PlayersSide;
-var() config float BotRatio;
-var() config bool AllowTeamChangeVsBots;
+var() bool UseLevelRecommendation;
+var() bool PlayersVsBots;
+var() int PlayersSide;
+var() float BotRatio;
+var() bool AllowTeamChangeVsBots;
 
 // ---=== UT3 override config ===---
 
-var() config bool bPlayersBalanceTeams;
+var() bool bPlayersBalanceTeams;
 
 //**********************************************************************************
 // Workflow variables
@@ -43,17 +42,9 @@ var array<name> AllVariablesNames;
 static final function BotBalancerConfig GetConfig()
 {
 	local BotBalancerConfig cfg;
-	local string ConfigName;
 
-	ConfigName = string(default.Class.Name);
-	cfg = BotBalancerConfig(FindObject("Transient" $"."$ ConfigName, default.Class));
-
-	// If there is no existing instance of this object class, create one
-	if (cfg == none) {
-		cfg = new(none, ConfigName) default.Class;
-		cfg.Init();
-	}
-
+	cfg = new default.Class;
+	cfg.Init();
 	return cfg;
 }
 
