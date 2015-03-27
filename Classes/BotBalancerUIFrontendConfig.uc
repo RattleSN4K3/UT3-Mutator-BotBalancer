@@ -6,17 +6,6 @@ class BotBalancerUIFrontendConfig extends UTUIFrontEnd;
 Const SkinPath = "UI_Skin_Derived.UTDerivedSkin";
 
 //**********************************************************************************
-// Structs
-//**********************************************************************************
-
-struct SUIIdStringCollectionInfo
-{
-	var name Option;
-	var array<int> Ids;
-	var array<string> Names;
-};
-
-//**********************************************************************************
 // Variables
 //**********************************************************************************
 
@@ -28,8 +17,6 @@ var() transient localized string Title;
 
 var transient bool bPendingClose;
 var transient bool bRegeneratingOptions;	// Used to detect when the options are being regenerated
-
-var transient array<SUIIdStringCollectionInfo> CollectionsIdStr;
 
 var() transient class<Object> SettingsClass;
 var() transient class<Object> ConfigClass;
