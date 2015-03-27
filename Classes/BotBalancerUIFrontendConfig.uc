@@ -30,10 +30,6 @@ var transient bool bPendingClose;
 var transient bool bRegeneratingOptions;	// Used to detect when the options are being regenerated
 
 var transient array<SUIIdStringCollectionInfo> CollectionsIdStr;
-var transient UTUIDataStore_2DStringList StringDatastore;
-var() transient class<UTUIDataStore_2DStringList> StringDatastoreClass;
-var transient array<name> RegisteredDatafields;
-var() transient string DataFieldPrefix;
 
 var() transient class<Settings> SettingsClass;
 var() transient class<Object> ConfigClass;
@@ -73,20 +69,9 @@ event SceneActivated(bool bInitialActivation)
 /** Called just after this scene is removed from the active scenes array */
 event SceneDeactivated()
 {
-	local int i;
-
 	// revert skin before we set the pending close flag otherwise it doesn't get reverted
 	//RevertSkin();
 	bPendingClose = true;
-
-	if (StringDatastore != none)
-	{
-		for (i=0; i<RegisteredDatafields.Length; i++)
-		{
-			StringDatastore.RemoveField(RegisteredDatafields[i]);
-		}
-		StringDatastore = none;
-	}
 
 	super.SceneDeactivated();
 }
@@ -190,7 +175,7 @@ function SetupOptionBindings()
 
 function bool PopulateMenuOption(name PropertyName, out DynamicMenuOption menuopt)
 {
-	return ret;
+	return false;
 }
 
 function bool PopulateMenuObject(GeneratedObjectInfo OI)
@@ -457,55 +442,6 @@ function ResetToDefaults()
 	ConfigClass.static.StaticSaveConfig();
 }
 
-function string CreateDataStoreStringList(name listname, array<string> entries)
-{
-	local DataStoreClient DSC;
-	local string fieldstr, ret;
-	local name fieldname;
-	local int i;
-
-	// Get a reference to (or create) a 2D string list data store
-	DSC = Class'UIInteraction'.static.GetDataStoreClient();
-
-	if (StringDatastore == none)
-	{
-		StringDatastore = UTUIDataStore_2DStringList(DSC.FindDataStore(StringDatastoreClass.default.Tag));
-		if (StringDatastore == none)
-		{
-			StringDatastore = DSC.CreateDataStore(StringDatastoreClass);
-			DSC.RegisterDataStore(StringDatastore);
-		}
-	}
-
-	fieldstr = DataFieldPrefix$listname;
-	fieldname = name(fieldstr);
-	// Setup and fill the data fields within the data store (if they are not already set)
-	if (StringDatastore.GetFieldIndex(fieldname) == INDEX_None)
-	{
-		i = StringDataStore.AddField(fieldname);
-		StringDatastore.AddFieldList(i, listname);
-		StringDataStore.UpdateFieldList(i, listname, entries);
-
-		RegisteredDatafields.AddItem(fieldname);
-	}
-
-	ret = "<"$StringDatastore.Tag$":"$fieldname$">";
-	return ret;
-}
-
-// Handles finding and casting generated option controls
-static final function UICheckbox FindOptionCheckBoxByName(UTUIOptionList List, name OptionName)
-{
-	local int i;
-
-	i = List.GetObjectInfoIndexFromName(OptionName);
-
-	if (i != INDEX_None)
-		return UICheckbox(List.GeneratedObjects[i].OptionObj);
-
-	return None;
-}
-
 // Handles finding generated option controls
 static final function bool FindOptionObjectByName(UTUIOptionList List, name OptionName, out UIObject obj)
 {
@@ -656,7 +592,4 @@ defaultproperties
 
 	SettingsClass=class'BotBalancerMutatorSettings'
 	ConfigClass=class'BotBalancerMutator'
-
-	StringDatastoreClass=class'UTUIDataStore_2DStringList'
-	DataFieldPrefix="BotBalancer_"
 }
