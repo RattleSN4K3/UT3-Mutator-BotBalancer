@@ -41,8 +41,6 @@ event PostInitialize()
 
 	//AdjustSkin();
 	super.PostInitialize();
-
-	SetupMenuOptions();
 }
 
 /** Scene activated event, sets up the title for the scene. */
@@ -144,30 +142,6 @@ function bool HandleInputKey( const out InputEventParameters EventParms )
 	}
 
 	return bResult;
-}
-
-//**********************************************************************************
-// Init funtions
-//**********************************************************************************
-
-// Initializes the menu option templates, and regenerates the option list
-function SetupMenuOptions()
-{
-}
-
-// Setup the data source bindings (but not the values)
-function SetupOptionBindings()
-{
-}
-
-function bool PopulateMenuOption(name PropertyName, out DynamicMenuOption menuopt)
-{
-	return false;
-}
-
-function bool PopulateMenuObject(GeneratedObjectInfo OI)
-{
-	return false;
 }
 
 //**********************************************************************************
