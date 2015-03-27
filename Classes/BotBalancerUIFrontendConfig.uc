@@ -31,7 +31,7 @@ var transient bool bRegeneratingOptions;	// Used to detect when the options are 
 
 var transient array<SUIIdStringCollectionInfo> CollectionsIdStr;
 
-var() transient class<Settings> SettingsClass;
+var() transient class<Object> SettingsClass;
 var() transient class<Object> ConfigClass;
 
 //'''''''''''''''''''''''''
@@ -244,7 +244,7 @@ function OnBack()
 
 function OnAccept()
 {
-	local Settings SettingsObj;
+	local Object SettingsObj;
 
 	`Log(name$"::OnAccept",,'BotBalancer');
 
@@ -311,123 +311,6 @@ function OnResetToDefaults()
 
 function FocusList(optional int index = INDEX_NONE)
 {
-}
-
-function string GetDescriptionOfSetting(name PropertyName, optional Settings Setts)
-{
-	local string ret;
-	local string str;
-
-	ret = Localize(SettingsClass.name$" Tooltips", string(PropertyName), string(class.GetPackageName()));
-	if (Len(ret) == 0 || Left(ret, 1) == "?")
-	{
-		ret = "";
-
-		if (Setts == none)
-		{
-			Setts = new SettingsClass;
-		}
-
-		if (Setts != none)
-		{
-			str = "PropertyDescription"$"_"$PropertyName;
-			ret = Setts.GetSpecialValue(name(str));
-		}
-	}
-
-	return ret;
-}
-
-function bool GetSettingsProperties(name PropertyName, out SettingsProperty out_Property, out SettingsPropertyPropertyMetaData out_PropertyMapping)
-{
-	local int index;
-	index = SettingsClass.default.PropertyMappings.Find('Name', PropertyName);
-	if (index != INDEX_NONE)
-	{
-		out_PropertyMapping = SettingsClass.default.PropertyMappings[index];
-		if (index < SettingsClass.default.Properties.Length)
-		{
-			out_Property = SettingsClass.default.Properties[index];
-			return true;
-		}
-	}
-
-	return false;
-}
-
-function bool GetSettingsCollection(name PropertyName, out array<int> out_ids, out array<string> out_names)
-{
-	local SettingsProperty prop;
-	local SettingsPropertyPropertyMetaData prop_mapping;
-	local int i;
-	local string str;
-
-	if (GetSettingsProperties(PropertyName, prop, prop_mapping))
-	{
-		out_ids.Length = 0;
-		out_names.Length = 0;
-		for (i=0; i<prop_mapping.ValueMappings.Length; i++)
-		{
-			out_ids.AddItem(prop_mapping.ValueMappings[i].Id);
-
-			str = string(prop_mapping.ValueMappings[i].Name);
-			out_names.AddItem(str);
-		}
-		return true;
-	}
-
-	return false;
-}
-
-function bool GetCollectionName(name PropertyName, string str_index, out string out_value)
-{
-	local int index, i;
-	index = CollectionsIdStr.Find('Option', PropertyName);
-	if (index != INDEX_NONE)
-	{
-		i = int(str_index);
-		if (i >= INDEX_NONE && i < CollectionsIdStr[index].Names.Length)
-		{
-			out_value = CollectionsIdStr[index].Names[i];
-			return true;
-		}			
-	}
-
-	return false;
-}
-
-function bool GetCollectionIndexValue(name PropertyName, string str_index, out string out_value)
-{
-	local int index, i;
-	index = CollectionsIdStr.Find('Option', PropertyName);
-	if (index != INDEX_NONE)
-	{
-		i = CollectionsIdStr[index].Ids.Find(int(str_index));
-		if (i != INDEX_NONE)
-		{
-			out_value = CollectionsIdStr[index].Names[i];
-			return true;
-		}				
-	}
-
-	return false;
-}
-
-function bool GetCollectionIndexId(name PropertyName, string value, out string out_id)
-{
-	local int index, i;
-	index = CollectionsIdStr.Find('Option', PropertyName);
-	if (index != INDEX_NONE)
-	{
-		i = CollectionsIdStr[index].Names.Find(value);
-		if (i != INDEX_NONE)
-		{
-			out_id = ""$CollectionsIdStr[index].Ids[i];
-			return true;
-		}				
-	}
-
-	return false;
 }
 
 //**********************************************************************************
