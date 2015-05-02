@@ -22,7 +22,7 @@ var() const byte DEFAULT_TEAM_PLAYER;
 var bool bGRIInitialized;
 
 /** Single instanced config instance which holds all the config variables */
-var BotBalancerConfig MyConfig;
+var BotBalancerMutator MyConfig;
 
 /** Readonly. Set when match has started (MatchStarting was called) */
 var bool bMatchStarted;
@@ -45,12 +45,30 @@ var private array<UTBot> BotsSpawnedOnce;
 
 // ---=== Override config ===---
 
-var bool bPlayersBalanceTeams;
-var bool PlayersVsBots;
-var float BotRatio;
+//var bool bPlayersBalanceTeams;
+//var bool PlayersVsBots;
+//var float BotRatio;
 
-/** Team index. Always valid index to GRI.Teams. Never 255/unset */
-var byte PlayersSide;
+///** Team index. Always valid index to GRI.Teams. Never 255/unset */
+//var byte PlayersSide;
+
+//**********************************************************************************
+// Config
+//**********************************************************************************
+
+var() /*config*/ float BotRatio;
+
+var() /*config*/ bool UseLevelRecommendation;
+var() /*config*/ float LevelRecommendationMultiplier;
+var() /*config*/ int LevelRecommendationOffsetPost;
+
+var() /*config*/ bool PlayersVsBots;
+var() /*config*/ int PlayersSide;
+var() /*config*/ bool AllowTeamChangeVsBots;
+
+// ---=== UT3 override config ===---
+
+var() /*config*/ bool bPlayersBalanceTeams;
 
 //**********************************************************************************
 // State for GRI initialization
@@ -601,16 +619,7 @@ function InitConfig()
 {
 	`log(name$"::InitConfig",bShowDebug,'BotBalancer');
 
-	MyConfig = class'BotBalancerConfig'.static.GetConfig();
-	MyConfig.Validate();
-
-	MyConfig.SaveConfigCustom();
-	`log(name$"::InitConfig - Config saved.",bShowDebug,'BotBalancer');
-
-	// set runtime vars from config values
-	bPlayersBalanceTeams = MyConfig.bPlayersBalanceTeams;
-	PlayersVsBots = MyConfig.PlayersVsBots;
-	BotRatio = MyConfig.BotRatio;
+	MyConfig = self;
 }
 
 function int GetNextTeamIndex(bool bBot)
@@ -1034,4 +1043,20 @@ DefaultProperties
 	DEFAULT_TEAM_BOT=1
 	DEFAULT_TEAM_PLAYER=0
 	DEFAULT_TEAM_UNSET=255
+
+
+	// ---=== Config ===---
+
+	BotRatio=2.0
+
+	UseLevelRecommendation=false
+	LevelRecommendationMultiplier=1.0
+	LevelRecommendationOffsetPost=0
+
+	PlayersVsBots=false
+	PlayersSide=-1
+	AllowTeamChangeVsBots=false
+
+	// --- UT3 override config ---
+	bPlayersBalanceTeams=true
 }
