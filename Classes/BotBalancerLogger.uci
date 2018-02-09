@@ -34,12 +34,12 @@
  */
 `if( `isdefined(FINAL_RELEASE) )
 	`if(`isdefined(FINAL_RELEASE_DEBUGCONSOLE))
-	`define	Log(msg,cond,tag)	`if(`cond)if(`cond)`{endif}class'BotBalancer'.static.LogHud(`msg`if(`tag),`tag`endif)	
+	`define	Log(msg,cond,tag)	`if(`cond)if(`cond)`{endif}class'BotBalancerLogger'.static.LogHud(`msg`if(`tag),`tag`endif)	
 	`else
 	`define	Log(msg,cond,tag)
 	`endif
 `else
-`define	Log(msg,cond,tag)	`if(`cond)if(`cond)`{endif}class'BotBalancer'.static.LogHud(`msg`if(`tag),`tag`endif)
+`define	Log(msg,cond,tag)	`if(`cond)if(`cond)`{endif}class'BotBalancerLogger'.static.LogHud(`msg`if(`tag),`tag`endif)
 `endif
 
 /**
@@ -52,10 +52,10 @@
  */
 `if( `isdefined(FINAL_RELEASE) )
 	`if(`isdefined(FINAL_RELEASE_DEBUGCONSOLE))
-	`define	Warn(msg,cond,tag)	`if(`cond)if(`cond)`{endif}class'BotBalancer'.static.WarnHud(`msg`if(`tag),`tag`endif)	
+	`define	Warn(msg,cond,tag)	`if(`cond)if(`cond)`{endif}class'BotBalancerLogger'.static.WarnHud(`msg`if(`tag),`tag`endif)	
 	`else
 	`define	Warn(msg,cond,tag)
 	`endif
 `else
-`define	Warn(msg,cond,tag)	`if(`cond)if(`cond)`{endif}class'BotBalancer'.static.WarnHud(`msg`if(`tag),`tag`endif)
+`define	Warn(msg,cond,tag)	`if(`cond)if(`cond)`{endif}class'BotBalancerLogger'.static.WarnHud(`msg`if(`tag),`tag`endif)
 `endif
