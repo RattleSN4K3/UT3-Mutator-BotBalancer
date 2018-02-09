@@ -25,6 +25,9 @@ var() config bool PlayersVsBots;
 var() config int PlayersSide;
 var() config bool AllowTeamChangeVsBots;
 
+var() config bool AdjustBotSkill;
+var() config bool UseOriginalCampaignAdjustment;
+
 // ---=== UT3 override config ===---
 
 var() config bool bPlayersBalanceTeams;
@@ -232,6 +235,9 @@ function ResetConfig()
 	PlayersSide=-1;
 	AllowTeamChangeVsBots=false;
 
+	AdjustBotSkill=true;
+	UseOriginalCampaignAdjustment=true;
+
 	// --- UT3 override config ---
 	bPlayersBalanceTeams=true;
 }
@@ -292,6 +298,9 @@ function string GetSpecialValue(name PropertyName)
 		case 'PlayersSide': return string(PlayersSide);
 		case 'AllowTeamChangeVsBots': return OutputBool(AllowTeamChangeVsBots);
 
+		case 'AdjustBotSkill': return OutputBool(AllowTeamChangeVsBots);
+		case 'UseOriginalCampaignAdjustment': return OutputBool(AllowTeamChangeVsBots);
+
 		// UT3 override config
 
 		case 'bPlayersBalanceTeams': return OutputBool(bPlayersBalanceTeams);
@@ -319,6 +328,9 @@ function SetSpecialValue(name PropertyName, string NewValue)
 		case 'PlayersVsBots': PlayersVsBots = ParseBool(NewValue);break;
 		case 'PlayersSide': PlayersSide = ParseInt(NewValue);break;
 		case 'AllowTeamChangeVsBots': AllowTeamChangeVsBots = ParseBool(NewValue);break;
+
+		case 'AdjustBotSkill': AdjustBotSkill = ParseBool(NewValue);break;
+		case 'UseOriginalCampaignAdjustment': UseOriginalCampaignAdjustment = ParseBool(NewValue);break;
 	
 		// UT3 override config
 
@@ -413,6 +425,9 @@ DefaultProperties
 	Variables.Add("PlayersSide")
 	Variables.Add("AllowTeamChangeVsBots")
 
+	Variables.Add("AdjustBotSkill")
+	Variables.Add("UseOriginalCampaignAdjustment")
+
 	Variables.Add("bPlayersBalanceTeams")
 
 	DataFieldPrefix="BotBalancer_"
@@ -428,6 +443,9 @@ DefaultProperties
 	PlayersVsBots=false
 	PlayersSide=-1
 	AllowTeamChangeVsBots=false
+
+	AdjustBotSkill=true
+	UseOriginalCampaignAdjustment=true
 
 	// --- UT3 override config ---
 	bPlayersBalanceTeams=true

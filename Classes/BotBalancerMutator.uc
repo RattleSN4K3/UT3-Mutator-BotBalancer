@@ -5,8 +5,10 @@ class BotBalancerMutator extends UTMutator;
 
 `if(`notdefined(FINAL_RELEASE))
 	var bool bShowDebug;
+	var bool bShowDebugCheckReplacement;
 
 	var bool bDebugSwitchToSpectator;
+	var bool bDebugGiveInventory;
 `endif
 
 //**********************************************************************************
@@ -45,6 +47,8 @@ var private array<UTBot> BotsSetOrders;
 
 /** Used to track down spawned bots within the custom addbots code */
 var private array<UTBot> BotsSpawnedOnce;
+
+var BotBalancerGameRules ScoreHandler;
 
 // ---=== Override config ===---
 
@@ -94,20 +98,47 @@ event PreBeginPlay()
 	`Log(name$"::PreBeginPlay",bShowDebug,'BotBalancer');
 	super.PreBeginPlay();
 }
+`endif
 
 // Called immediately after gameplay begins.
-//
 event PostBeginPlay()
 {
 	`Log(name$"::PostBeginPlay",bShowDebug,'BotBalancer');
 	super.PostBeginPlay();
+
+	CacheGame = UTTeamGame(WorldInfo.Game);
+	if (CacheGame == none) //@TODO: destroy in Duel Game
+	{
+		`Warn(name$"::InitMutator - No team game. Destroy mutator!!!",bShowDebug,'BotBalancer');
+		Destroy();
+		return;
+	}
+
+	InitConfig();
+
+	// Game rules for notify events of scores and kills
+	CreateGameRules();
+
+	// set bot class to a null class (abstract) which prevents
+	// bots being spawned by commands like (addbots, addbluebots,...)
+	// but also timed by NeedPlayers in GameInfo::Timer
+	CacheBotClass = CacheGame.BotClass;
+	CacheGame.BotClass = class'BotBalancerNullBot';
+
+	// Disable auto balancing of bot teams.
+	CacheGame.bCustomBots = true;
 }
-`endif
 
 event Destroyed()
 {
 	`Log(name$"::Destroyed",bShowDebug,'BotBalancer');
 	
+	if (ScoreHandler != none)
+	{
+		ScoreHandler.Destroy();
+		ScoreHandler = none;
+	}
+
 	MyConfig = none;
 	super.Destroyed();
 }
@@ -127,25 +158,6 @@ function InitMutator(string Options, out string ErrorMessage)
 
 	`Log(name$"::InitMutator - Options:"@Options,bShowDebug,'BotBalancer');
 	super.InitMutator(Options, ErrorMessage);
-
-	CacheGame = UTTeamGame(WorldInfo.Game);
-	if (CacheGame == none)
-	{
-		`Warn(name$"::InitMutator - No team game. Destroy mutator!!!",bShowDebug,'BotBalancer');
-		Destroy();
-		return;
-	}
-
-	InitConfig();
-
-	// set bot class to a null class (abstract) which prevents
-	// bots being spawned by commands like (addbots, addbluebots,...)
-	// but also timed by NeedPlayers in GameInfo::Timer
-	CacheBotClass = CacheGame.BotClass;
-	CacheGame.BotClass = class'BotBalancerNullBot';
-
-	// Disable auto balancing of bot teams.
-	CacheGame.bCustomBots = true;
 
 	// override player-balance flag
 	if (class'GameInfo'.static.HasOption(Options, "BalanceTeams"))
@@ -313,6 +325,13 @@ function ModifyPlayer(Pawn Other)
 
 	`Log(name$"::ModifyPlayer - Other:"@Other,bShowDebug,'BotBalancer');
 	super.ModifyPlayer(Other);
+
+`if(`notdefined(FINAL_RELEASE))
+	if (bDebugGiveInventory && Other.Controller != none && AIController(Other.Controller) == none)
+	{
+		GiveInventory(Other, class'BotBalancerTestInventory');
+	}
+`endif
 
 	if (Other == none || UTBot(Other.Controller) == none) return;
 	bot = UTBot(Other.Controller);
@@ -590,6 +609,14 @@ function Mutate(string MutateString, PlayerController Sender)
 		return;
 	}
 }
+
+// Returns true to keep this actor
+function bool CheckReplacement(Actor Other)
+{
+	`Log(name$"::CheckReplacement - Other:"@Other,bShowDebug&&bShowDebugCheckReplacement,'BotBalancer');
+	return true;
+}
+
 `endif
 
 //**********************************************************************************
@@ -658,6 +685,122 @@ function OnBotDeath_PostCheck(Pawn Other, Actor Sender)
 	//CacheGame.bForceAllRed = false;
 }
 
+function NotifyScoreObjective(PlayerReplicationInfo Scorer, Int Score)
+{
+	`Log(self$"::NotifyScoreObjective - Scorer:"@Scorer$" - Score:"@Score,bShowDebug,'BotBalancer');
+
+}
+
+function NotifyScoreKill(Controller Killer, Controller Killed)
+{
+	`Log(self$"::NotifyScoreKill - Killer:"@Killer$" - Killed:"@Killed,bShowDebug,'BotBalancer');
+
+	if (MyConfig.AdjustBotSkill)
+	{
+		if (MyConfig.UseOriginalCampaignAdjustment)
+		{
+			// adjust bot skills to match player 
+			if (Killer.IsA('PlayerController') && Killed.IsA('AIController'))
+			{
+				StockAdjustSkill(AIController(Killed), PlayerController(Killer), true);
+			}
+			else if (Killed.IsA('PlayerController') && Killer.IsA('AIController'))
+			{
+				StockAdjustSkill(AIController(Killer), PlayerController(Killed), false);
+			}
+		}
+	}
+}
+
+/** Adjusts the bot skill
+ * @param B the Bot to adjus skill
+ * @param P the opponent player
+ * @param bWinner wheher the player is the winner/killer (false means the bot has killed the player)
+ **/
+function StockAdjustSkill(AIController B, PlayerController P, bool bWinner)
+{
+	local float AdjustmentFactor;
+	local array<int> PlayersCount, BotsCount;
+	local array<float> TeamScore;
+	local byte TeamIndexWinner, TeamIndexOther;
+	local float AdjustedDifficulty;
+	local int TeamIndex;
+
+	// slightly adjust skill
+	AdjustmentFactor = 0.15;
+
+	// calc player/bot and team score arrays, returns the index of the larger team (or -1)
+	TeamIndex = GetTeamPlayers(PlayersCount, BotsCount, TeamScore);
+
+	AdjustedDifficulty = CacheGame.AdjustedDifficulty;
+
+	if (bWinner)
+	{
+		TeamIndexWinner = P.GetTeamNum();
+		TeamIndexOther = B.GetTeamNum();
+		AdjustmentFactor = Abs(AdjustmentFactor);
+	}
+	else
+	{
+		TeamIndexWinner = B.GetTeamNum();
+		TeamIndexOther = P.GetTeamNum();
+		AdjustmentFactor = -1 * Abs(AdjustmentFactor);
+	}
+
+	// only adjust loser team if needed based on score
+	if (TeamIndexWinner < TeamScore.Length && TeamIndexOther < TeamScore.Length &&
+		(TeamScore[TeamIndexOther] - 1 < TeamScore[TeamIndexWinner]))
+	{
+		AdjustedDifficulty = FClamp(AdjustedDifficulty + AdjustmentFactor, 0.0, 7.0);
+	}
+
+	// adjust game difficulty
+	AdjustedDifficulty = FClamp(AdjustedDifficulty, CacheGame.GameDifficulty - 1.25, CacheGame.GameDifficulty + 1.25);
+	CacheGame.AdjustedDifficulty = AdjustedDifficulty;
+
+	if (bWinner == (B.Skill < AdjustedDifficulty))
+	{
+		StockCampaignSkillAdjust(UTBot(B), TeamIndexWinner, TeamIndexOther);
+		UTBot(B).ResetSkill();
+	}
+}
+
+// mostly copied from original game code related to Story-mode
+function StockCampaignSkillAdjust(UTBot aBot, int TeamIndexWinner, int TeamIndexOther)
+{
+	if ( (aBot.PlayerReplicationInfo.Team.TeamIndex == TeamIndexOther) || (CacheGame.AdjustedDifficulty < CacheGame.GameDifficulty) )
+	{
+		aBot.Skill = CacheGame.AdjustedDifficulty;
+
+		if ( aBot.PlayerReplicationInfo.Team.TeamIndex == TeamIndexOther )
+		{
+			// reduced enemy skill slightly if their team is bigger
+			if (CacheGame.Teams[TeamIndexOther].Size > CacheGame.Teams[TeamIndexWinner].size )
+			{
+				aBot.Skill -= 0.5;
+			}
+			else if ( (CacheGame.Teams[TeamIndexOther].Size < CacheGame.Teams[TeamIndexWinner].Size) && (CacheGame.NumPlayers > 1) )
+			{
+				aBot.Skill += 0.75;
+			}
+
+			// increase skill for the big bosses.
+			if ( aBot.PlayerReplicationInfo.PlayerName ~= "Akasha" )
+			{
+				aBot.Skill += 1.5;
+			}
+			else if ( aBot.PlayerReplicationInfo.PlayerName ~= "Loque" )
+			{
+				aBot.Skill += 0.75;
+			}
+		}
+	}
+	else
+	{
+		aBot.Skill = 0.5 * (CacheGame.AdjustedDifficulty + CacheGame.GameDifficulty);
+	}
+}
+
 //**********************************************************************************
 // Private functions
 //**********************************************************************************
@@ -679,6 +822,20 @@ function InitConfig()
 
 	// if GRI was already initialized, set PlayersSide again
 	if (bGRIInitialized) SetPlayersSide();
+}
+
+function CreateGameRules()
+{
+	ScoreHandler = Spawn(class'BotBalancerGameRules');
+	if (ScoreHandler != none)
+	{
+		if ( WorldInfo.Game.GameRulesModifiers == None )
+			WorldInfo.Game.GameRulesModifiers = ScoreHandler;
+		else
+			WorldInfo.Game.GameRulesModifiers.AddGameRules(ScoreHandler);
+
+		ScoreHandler.Callback = self;
+	}
 }
 
 function SetPlayersSide()
@@ -943,7 +1100,6 @@ function SwitchBot(UTBot bot, int TeamNum)
 	}
 }
 
-
 `if(`notdefined(FINAL_RELEASE))
 function bool GoToSpectator( PlayerController PC )
 {
@@ -1026,7 +1182,10 @@ function bool GetAdjustedTeamPlayerCount(out array<int> PlayersCount, out array<
 	local int i, index, count;
 
 	// init team count array
-	PlayersCount.Add(WorldInfo.GRI.Teams.Length);
+	PlayersCount.Length = 0; // clear
+	PlayersCount.Length = WorldInfo.GRI.Teams.Length;
+	TeamsCount.Length = 0; // clear
+	TeamsCount.Length = WorldInfo.GRI.Teams.Length;
 
 	// count real-players
 	for ( i=0; i<WorldInfo.GRI.PRIArray.Length; i++ )
@@ -1058,6 +1217,82 @@ function bool GetAdjustedTeamPlayerCount(out array<int> PlayersCount, out array<
 	return true;
 }
 
+/** Retrieves the player/bot count array (optionally returns team score array). 
+ * @return the index of the greater team (-1 = equal, 255 = no team)
+ */
+function int GetTeamPlayers(out array<int> PlayersCount, out array<int> BotsCount, optional out array<float> TeamScore)
+{
+	local int i, index;
+	local byte bIsBot;
+
+	// init team count array
+	PlayersCount.Length = 0; // clear
+	PlayersCount.Length = WorldInfo.GRI.Teams.Length;
+	BotsCount.Length = 0; // clear
+	BotsCount.Length = WorldInfo.GRI.Teams.Length;
+
+	TeamScore.Length = 0; // clear
+	TeamScore.Length = WorldInfo.GRI.Teams.Length;
+
+	// count real-players
+	for ( i=0; i<WorldInfo.GRI.PRIArray.Length; i++ )
+	{
+		// only count real-players (bot and players)
+		if (!IsValidPlayer(WorldInfo.GRI.PRIArray[i], true, false, bIsBot))
+			continue;
+
+		// fill up array if needed
+		index = WorldInfo.GRI.PRIArray[i].Team.TeamIndex;
+
+		// one up for the current out array
+		if (bIsBot == 1)
+		{
+			if (BotsCount.Length <= index)
+			{
+				BotsCount.Length = index-BotsCount.Length+1;
+			}
+
+			BotsCount[index]++;
+		}
+		else
+		{
+			if (PlayersCount.Length <= index)
+			{
+				PlayersCount.Length = index-PlayersCount.Length+1;
+			}
+
+			PlayersCount[index]++;
+		}
+	}
+
+	// set/count score of all teams
+	for ( i=0; i<WorldInfo.GRI.Teams.Length; i++)
+	{
+		if (WorldInfo.GRI.Teams[i] == none) continue;
+		TeamScore[i] = WorldInfo.GRI.Teams[i].Score;
+	}
+
+	if (TeamScore.Length == 0) 
+	{
+		return DEFAULT_TEAM_UNSET;
+	}
+	else if (TeamScore.Length == 1)
+	{
+		return 0;
+	}
+	else
+	{
+		// TODO: Add support for multi teams
+		if (PlayersCount[0] == PlayersCount[1])
+		{
+			return -1;
+		}
+		
+		// return greater team based on net-player count
+		return PlayersCount[0] > PlayersCount[1] ? 1 : 0;
+	}
+}
+
 private function SemaForceAllRed(bool bSet)
 {
 	if (bSet && !bIsOriginalForceAllRedSet)
@@ -1080,6 +1315,18 @@ private function CheckAndClearForceRedAll()
 	}
 }
 
+`if(`notdefined(FINAL_RELEASE))
+function GiveInventory(Pawn Other, class<Inventory> ThisInventoryClass)
+{
+	if (Other == none || ThisInventoryClass == none)
+	{
+		return;
+	}
+
+	Other.CreateInventory(ThisInventoryClass, false);
+}
+`endif
+
 //**********************************************************************************
 // Helper functions
 //**********************************************************************************
@@ -1088,13 +1335,16 @@ private function CheckAndClearForceRedAll()
  *  By default, only net players are taken into account
  *  @param PRI the net player (or bot) to check
  *  @param bCheckBot whether to ignore bots
+ *  @param bIsBot (out) outputs whether the given player is a bot (1 == true, else == false)
+ *  @param bStrictBot if set, the player flag @ref <bIsBot> (bIsBot) is only true if the player is type UTBot and subclasses
  */
-function bool IsValidPlayer(PlayerReplicationInfo PRI, optional bool bCheckBot, optional bool bOnlyBots)
+function bool IsValidPlayer(PlayerReplicationInfo PRI, optional bool bCheckBot, optional bool bOnlyBots, optional out byte bIsBot, optional bool bStrictBot)
 {
 	if (PRI == none || PRI.bOnlySpectator || (!bCheckBot && PRI.bBot) || PRI.Team == none || 
 		PRI.Owner == none || (bOnlyBots && UTBot(PRI.Owner) == none))
 		return false;
 
+	bIsBot = (PRI.bBot && (!bStrictBot || UTBot(PRI.Owner) != none)) ? 1 : 0;
 	return true;
 }
 
@@ -1116,7 +1366,9 @@ DefaultProperties
 {
 	`if(`notdefined(FINAL_RELEASE))
 		bShowDebug=true
+		bShowDebugCheckReplacement=true
 		bDebugSwitchToSpectator=false
+		bDebugGiveInventory=true
 	`endif
 
 	DEFAULT_TEAM_BOT=1
