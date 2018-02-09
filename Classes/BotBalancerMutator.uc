@@ -694,11 +694,12 @@ function NotifyScoreObjective(PlayerReplicationInfo Scorer, Int Score)
 function NotifyScoreKill(Controller Killer, Controller Killed)
 {
 	`Log(self$"::NotifyScoreKill - Killer:"@Killer$" - Killed:"@Killed,bShowDebug,'BotBalancer');
-
+ 
 	if (MyConfig.AdjustBotSkill)
 	{
-		if (MyConfig.UseOriginalCampaignAdjustment)
+		switch (MyConfig.SkillAdjustment)
 		{
+		case Algo_Original:
 			// adjust bot skills to match player 
 			if (Killer.IsA('PlayerController') && Killed.IsA('AIController'))
 			{
@@ -708,7 +709,19 @@ function NotifyScoreKill(Controller Killer, Controller Killed)
 			{
 				StockAdjustSkill(AIController(Killer), PlayerController(Killed), false);
 			}
+			break;
+		case Algo_Adjustable:
+			if (Killer.IsA('PlayerController') && Killed.IsA('AIController'))
+			{
+				ConfigBasedAdjustSkill(AIController(Killed), PlayerController(Killer), true);
+			}
+			else if (Killed.IsA('PlayerController') && Killer.IsA('AIController'))
+			{
+				ConfigBasedAdjustSkill(AIController(Killer), PlayerController(Killed), false);
+			}
+			break;
 		}
+		
 	}
 }
 
@@ -782,6 +795,103 @@ function StockCampaignSkillAdjust(UTBot aBot, int TeamIndexWinner, int TeamIndex
 			else if ( (CacheGame.Teams[TeamIndexOther].Size < CacheGame.Teams[TeamIndexWinner].Size) && (CacheGame.NumPlayers > 1) )
 			{
 				aBot.Skill += 0.75;
+			}
+
+			// increase skill for the big bosses.
+			if ( aBot.PlayerReplicationInfo.PlayerName ~= "Akasha" )
+			{
+				aBot.Skill += 1.5;
+			}
+			else if ( aBot.PlayerReplicationInfo.PlayerName ~= "Loque" )
+			{
+				aBot.Skill += 0.75;
+			}
+		}
+	}
+	else
+	{
+		aBot.Skill = 0.5 * (CacheGame.AdjustedDifficulty + CacheGame.GameDifficulty);
+	}
+}
+
+/** Adjusts the bot skill based on config values
+ * @param B the Bot to adjus skill
+ * @param P the opponent player
+ * @param bWinner wheher the player is the winner/killer (false means the bot has killed the player)
+ **/
+function ConfigBasedAdjustSkill(AIController B, PlayerController P, bool bWinner)
+{
+	local float AdjustmentFactor;
+	local array<int> PlayersCount, BotsCount;
+	local array<float> TeamScore;
+	local byte TeamIndexWinner, TeamIndexOther;
+	local float AdjustedDifficulty;
+	local int TeamIndex;
+
+	// slightly adjust skill
+	AdjustmentFactor = MyConfig.SkillAdjustmentFactor;
+
+	// calc player/bot and team score arrays, returns the index of the larger team (or -1)
+	TeamIndex = GetTeamPlayers(PlayersCount, BotsCount, TeamScore);
+
+	AdjustedDifficulty = CacheGame.AdjustedDifficulty;
+
+	if (bWinner)
+	{
+		TeamIndexWinner = P.GetTeamNum();
+		TeamIndexOther = B.GetTeamNum();
+		AdjustmentFactor = Abs(AdjustmentFactor);
+	}
+	else
+	{
+		TeamIndexWinner = B.GetTeamNum();
+		TeamIndexOther = P.GetTeamNum();
+		AdjustmentFactor = -1 * Abs(AdjustmentFactor);
+	}
+
+	// only adjust loser team if needed based on score
+	if (TeamIndexWinner < TeamScore.Length && TeamIndexOther < TeamScore.Length &&
+		(TeamScore[TeamIndexOther] - MyConfig.SkillAdjustmentThreshold < TeamScore[TeamIndexWinner]))
+	{
+		AdjustedDifficulty += AdjustmentFactor;
+	}
+
+	// adjust game difficulty
+	if (MyConfig.SkillAdjustmentDisparity > 0.0)
+		AdjustedDifficulty = FClamp(AdjustedDifficulty, CacheGame.GameDifficulty - MyConfig.SkillAdjustmentDisparity, CacheGame.GameDifficulty + MyConfig.SkillAdjustmentDisparity);
+	if (MyConfig.SkillAdjustmentMaxSkill > 0.0)
+		AdjustedDifficulty = FMin(AdjustedDifficulty, MyConfig.SkillAdjustmentMaxSkill);
+	if (MyConfig.SkillAdjustmentMinSkill >= 0.0)
+		AdjustedDifficulty = FMax(AdjustedDifficulty, MyConfig.SkillAdjustmentMinSkill);
+
+	// apply difficulty
+	AdjustedDifficulty = FClamp(AdjustedDifficulty, 0.0, 7.0);
+	CacheGame.AdjustedDifficulty = AdjustedDifficulty;
+
+	if (bWinner == (B.Skill < AdjustedDifficulty))
+	{
+		if (MyConfig.SkillAdjustmentLikeCampaign)
+			ConfigBasedCampaignSkillAdjust(UTBot(B), TeamIndexWinner, TeamIndexOther);
+		UTBot(B).ResetSkill();
+	}
+}
+
+function ConfigBasedCampaignSkillAdjust(UTBot aBot, int TeamIndexWinner, int TeamIndexOther)
+{
+	if ( (aBot.PlayerReplicationInfo.Team.TeamIndex == TeamIndexOther) || (CacheGame.AdjustedDifficulty < CacheGame.GameDifficulty) )
+	{
+		aBot.Skill = CacheGame.AdjustedDifficulty;
+
+		if ( aBot.PlayerReplicationInfo.Team.TeamIndex == TeamIndexOther )
+		{
+			// reduced enemy skill slightly if their team is bigger
+			if (CacheGame.Teams[TeamIndexOther].Size > CacheGame.Teams[TeamIndexWinner].Size )
+			{
+				aBot.Skill -= MyConfig.SkillAdjustmentCampaignReduce;
+			}
+			else if ( (CacheGame.Teams[TeamIndexOther].Size < CacheGame.Teams[TeamIndexWinner].Size) && (CacheGame.NumPlayers > 1) )
+			{
+				aBot.Skill += MyConfig.SkillAdjustmentCampaignIncrease;
 			}
 
 			// increase skill for the big bosses.

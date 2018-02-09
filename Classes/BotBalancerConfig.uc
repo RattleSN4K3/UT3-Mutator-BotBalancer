@@ -26,7 +26,25 @@ var() config int PlayersSide;
 var() config bool AllowTeamChangeVsBots;
 
 var() config bool AdjustBotSkill;
-var() config bool UseOriginalCampaignAdjustment;
+var() config ESkillAdjustmentAlgorithm SkillAdjustment;
+
+/** The amount of skill factor (in absolute value; based on 0-7 available skill) to use for a single adjustment */
+var() config float SkillAdjustmentFactor;
+/** The number of kills/score the killed/killer player needs to different to consider adjustments */
+var() config int SkillAdjustmentThreshold;
+/** The maximum skill level to differ from the game difficulty */
+var() config float SkillAdjustmentDisparity;
+/** Adjust skill like campaign mode (Akash/Loque increases skill, higher sized team decreases skill, etc.) */
+var() config bool SkillAdjustmentLikeCampaign;
+/** The amount to reduce the skill of the higher numbered team */
+var() config float SkillAdjustmentCampaignReduce;
+/** The amount to increase the skill of the outnumbered team */
+var() config float SkillAdjustmentCampaignIncrease;
+
+/** The min skill level */
+var() config float SkillAdjustmentMinSkill;
+/** The max skill level */
+var() config float SkillAdjustmentMaxSkill;
 
 // ---=== UT3 override config ===---
 
@@ -218,6 +236,16 @@ final function Validate()
 		LevelRecommendationMultiplier = Abs(LevelRecommendationMultiplier);
 	else if (LevelRecommendationMultiplier == 0.0)
 		LevelRecommendationMultiplier = 1.0;
+
+	if (SkillAdjustment == Algo_MAX)
+		SkillAdjustment = Algo_Original;
+
+	SkillAdjustmentFactor = FClamp(SkillAdjustmentFactor, 0.0, 7.0);
+	if (SkillAdjustmentThreshold < 0)
+		SkillAdjustmentThreshold = 1;
+
+	if (SkillAdjustmentCampaignReduce < 0) SkillAdjustmentCampaignReduce = 0.5;
+	if (SkillAdjustmentCampaignIncrease < 0) SkillAdjustmentCampaignIncrease = 0.75;
 }
 
 // Somehow the archetype values are changed. We need to reset the value hardcoded
@@ -236,7 +264,16 @@ function ResetConfig()
 	AllowTeamChangeVsBots=false;
 
 	AdjustBotSkill=true;
-	UseOriginalCampaignAdjustment=true;
+	SkillAdjustment=Algo_Adjustable;
+
+	SkillAdjustmentFactor=0.15;
+	SkillAdjustmentThreshold=1;
+	SkillAdjustmentDisparity=1.25;
+	SkillAdjustmentLikeCampaign=false;
+	SkillAdjustmentCampaignReduce=0.5;
+	SkillAdjustmentCampaignIncrease=0.75;
+	SkillAdjustmentMinSkill=0;
+	SkillAdjustmentMaxSkill=-1;
 
 	// --- UT3 override config ---
 	bPlayersBalanceTeams=true;
@@ -298,8 +335,17 @@ function string GetSpecialValue(name PropertyName)
 		case 'PlayersSide': return string(PlayersSide);
 		case 'AllowTeamChangeVsBots': return OutputBool(AllowTeamChangeVsBots);
 
-		case 'AdjustBotSkill': return OutputBool(AllowTeamChangeVsBots);
-		case 'UseOriginalCampaignAdjustment': return OutputBool(AllowTeamChangeVsBots);
+		case 'AdjustBotSkill': return OutputBool(AdjustBotSkill);
+		case 'SkillAdjustment': return string(int(SkillAdjustment));
+
+		case 'SkillAdjustmentFactor': return string(SkillAdjustmentFactor);
+		case 'SkillAdjustmentThreshold': return string(SkillAdjustmentThreshold);
+		case 'SkillAdjustmentDisparity': return string(SkillAdjustmentDisparity);
+		case 'SkillAdjustmentLikeCampaign': return OutputBool(SkillAdjustmentLikeCampaign);
+		case 'SkillAdjustmentCampaignReduce': return string(SkillAdjustmentCampaignReduce);
+		case 'SkillAdjustmentCampaignIncrease': return string(SkillAdjustmentCampaignIncrease);
+		case 'SkillAdjustmentMinSkill': return string(SkillAdjustmentMinSkill);
+		case 'SkillAdjustmentMaxSkill': return string(SkillAdjustmentMaxSkill);
 
 		// UT3 override config
 
@@ -330,7 +376,16 @@ function SetSpecialValue(name PropertyName, string NewValue)
 		case 'AllowTeamChangeVsBots': AllowTeamChangeVsBots = ParseBool(NewValue);break;
 
 		case 'AdjustBotSkill': AdjustBotSkill = ParseBool(NewValue);break;
-		case 'UseOriginalCampaignAdjustment': UseOriginalCampaignAdjustment = ParseBool(NewValue);break;
+		case 'SkillAdjustment': SkillAdjustment = ESkillAdjustmentAlgorithm(int(NewValue));break;
+
+		case 'SkillAdjustmentFactor': SkillAdjustmentFactor = ParseFloat(NewValue);break;
+		case 'SkillAdjustmentThreshold': SkillAdjustmentThreshold = ParseInt(NewValue);break;
+		case 'SkillAdjustmentDisparity': SkillAdjustmentDisparity = ParseFloat(NewValue);break;
+		case 'SkillAdjustmentLikeCampaign': SkillAdjustmentLikeCampaign = ParseBool(NewValue);break;
+		case 'SkillAdjustmentCampaignReduce': SkillAdjustmentCampaignReduce = ParseFloat(NewValue);break;
+		case 'SkillAdjustmentCampaignIncrease': SkillAdjustmentCampaignIncrease = ParseFloat(NewValue);break;
+		case 'SkillAdjustmentMinSkill': SkillAdjustmentMinSkill = ParseFloat(NewValue);break;
+		case 'SkillAdjustmentMaxSkill': SkillAdjustmentMaxSkill = ParseFloat(NewValue);break;
 	
 		// UT3 override config
 
@@ -426,7 +481,16 @@ DefaultProperties
 	Variables.Add("AllowTeamChangeVsBots")
 
 	Variables.Add("AdjustBotSkill")
-	Variables.Add("UseOriginalCampaignAdjustment")
+	Variables.Add("SkillAdjustment")
+
+	Variables.Add("SkillAdjustmentFactor")
+	Variables.Add("SkillAdjustmentThreshold")
+	Variables.Add("SkillAdjustmentDisparity")
+	Variables.Add("SkillAdjustmentLikeCampaign")
+	Variables.Add("SkillAdjustmentCampaignReduce")
+	Variables.Add("SkillAdjustmentCampaignIncrease")
+	Variables.Add("SkillAdjustmentMinSkill")
+	Variables.Add("SkillAdjustmentMaxSkill")
 
 	Variables.Add("bPlayersBalanceTeams")
 
@@ -445,7 +509,17 @@ DefaultProperties
 	AllowTeamChangeVsBots=false
 
 	AdjustBotSkill=true
-	UseOriginalCampaignAdjustment=true
+	SkillAdjustment=Algo_Adjustable
+
+	SkillAdjustmentFactor=0.15
+	SkillAdjustmentThreshold=1
+	SkillAdjustmentDisparity=1.25
+	SkillAdjustmentLikeCampaign=false
+	SkillAdjustmentCampaignReduce=0.5
+	SkillAdjustmentCampaignIncrease=0.75
+	SkillAdjustmentMinSkill=0.0
+	SkillAdjustmentMaxSkill=-1
+
 
 	// --- UT3 override config ---
 	bPlayersBalanceTeams=true
