@@ -3,10 +3,10 @@
 `if( `notdefined(FINAL_RELEASE) )
 
 `if( `isdefined(NO_CONSOLE) )
-class BotBalancer extends Object;
+class BotBalancerLogger extends Object;
 `endif // ELSE `notdefined(NO_CONSOLE)
 `if( `notdefined(NO_CONSOLE) )
-class BotBalancer extends Interaction;
+class BotBalancerLogger extends Interaction;
 
 // INGAME LOG
 //
@@ -414,13 +414,13 @@ static function LogHud(string msg, optional name tag)
 	LogInternal(msg, tag);
 
 `if( `notdefined(NO_CONSOLE) )
-	if (class'BotBalancer'.default.Logger == none && !class'BotBalancer'.static.CreateLogger())
+	if (class'BotBalancerLogger'.default.Logger == none && !class'BotBalancerLogger'.static.CreateLogger())
 	{
-		class'BotBalancer'.static.StaticAddMessage(msg, tag);
+		class'BotBalancerLogger'.static.StaticAddMessage(msg, tag);
 	}
 	else
 	{
-		class'BotBalancer'.default.Logger.AddMessage(msg, tag);
+		class'BotBalancerLogger'.default.Logger.AddMessage(msg, tag);
 	}
 `endif // END `notdefined(NO_CONSOLE)
 }
@@ -430,19 +430,19 @@ static function WarnHud(string msg, optional name tag)
 	WarnInternal(msg);
 
 `if( `notdefined(NO_CONSOLE) )
-	if (class'BotBalancer'.default.Logger == none && !class'BotBalancer'.static.CreateLogger())
+	if (class'BotBalancerLogger'.default.Logger == none && !class'BotBalancerLogger'.static.CreateLogger())
 	{
-		class'BotBalancer'.static.StaticAddMessage(msg, tag, true);
+		class'BotBalancerLogger'.static.StaticAddMessage(msg, tag, true);
 	}
 	else
 	{
-		class'BotBalancer'.default.Logger.AddMessage(msg, tag, true);
+		class'BotBalancerLogger'.default.Logger.AddMessage(msg, tag, true);
 	}
 `endif // END `notdefined(NO_CONSOLE)
 }
 
 `else // ELSE isdefined(FINAL_RELEASE) )
-class BotBalancer extends Object;
+class BotBalancerLogger extends Object;
 `endif // END `notdefined(FINAL_RELEASE)
 
 Defaultproperties
