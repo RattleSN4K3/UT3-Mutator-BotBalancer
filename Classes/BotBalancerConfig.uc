@@ -41,6 +41,9 @@ var() config float SkillAdjustmentCampaignReduce;
 /** The amount to increase the skill of the outnumbered team */
 var() config float SkillAdjustmentCampaignIncrease;
 
+/** Whether to adjust the bot skill individually */
+var() config bool SkillAdjustmentIndividual;
+
 /** The min skill level */
 var() config float SkillAdjustmentMinSkill;
 /** The max skill level */
@@ -272,6 +275,7 @@ function ResetConfig()
 	SkillAdjustmentLikeCampaign=false;
 	SkillAdjustmentCampaignReduce=0.5;
 	SkillAdjustmentCampaignIncrease=0.75;
+	SkillAdjustmentIndividual=true;
 	SkillAdjustmentMinSkill=0;
 	SkillAdjustmentMaxSkill=-1;
 
@@ -344,6 +348,7 @@ function string GetSpecialValue(name PropertyName)
 		case 'SkillAdjustmentLikeCampaign': return OutputBool(SkillAdjustmentLikeCampaign);
 		case 'SkillAdjustmentCampaignReduce': return string(SkillAdjustmentCampaignReduce);
 		case 'SkillAdjustmentCampaignIncrease': return string(SkillAdjustmentCampaignIncrease);
+		case 'SkillAdjustmentIndividual': return OutputBool(SkillAdjustmentIndividual);
 		case 'SkillAdjustmentMinSkill': return string(SkillAdjustmentMinSkill);
 		case 'SkillAdjustmentMaxSkill': return string(SkillAdjustmentMaxSkill);
 
@@ -384,6 +389,7 @@ function SetSpecialValue(name PropertyName, string NewValue)
 		case 'SkillAdjustmentLikeCampaign': SkillAdjustmentLikeCampaign = ParseBool(NewValue);break;
 		case 'SkillAdjustmentCampaignReduce': SkillAdjustmentCampaignReduce = ParseFloat(NewValue);break;
 		case 'SkillAdjustmentCampaignIncrease': SkillAdjustmentCampaignIncrease = ParseFloat(NewValue);break;
+		case 'SkillAdjustmentIndividual': SkillAdjustmentIndividual = ParseBool(NewValue);break;
 		case 'SkillAdjustmentMinSkill': SkillAdjustmentMinSkill = ParseFloat(NewValue);break;
 		case 'SkillAdjustmentMaxSkill': SkillAdjustmentMaxSkill = ParseFloat(NewValue);break;
 	
@@ -489,6 +495,7 @@ DefaultProperties
 	Variables.Add("SkillAdjustmentLikeCampaign")
 	Variables.Add("SkillAdjustmentCampaignReduce")
 	Variables.Add("SkillAdjustmentCampaignIncrease")
+	Variables.Add("SkillAdjustmentIndividual")
 	Variables.Add("SkillAdjustmentMinSkill")
 	Variables.Add("SkillAdjustmentMaxSkill")
 
@@ -517,6 +524,7 @@ DefaultProperties
 	SkillAdjustmentLikeCampaign=false
 	SkillAdjustmentCampaignReduce=0.5
 	SkillAdjustmentCampaignIncrease=0.75
+	SkillAdjustmentIndividual=true
 	SkillAdjustmentMinSkill=0.0
 	SkillAdjustmentMaxSkill=-1
 

@@ -760,6 +760,10 @@ function StockAdjustSkill(AIController B, PlayerController P, bool bWinner)
 		AdjustmentFactor = -1 * Abs(AdjustmentFactor);
 	}
 
+	// nothing to do
+	if (TeamIndexWinner == TeamIndexOther || TeamIndex < 0)
+		return;
+
 	// only adjust loser team if needed based on score
 	if (TeamIndexWinner < TeamScore.Length && TeamIndexOther < TeamScore.Length &&
 		(TeamScore[TeamIndexOther] - 1 < TeamScore[TeamIndexWinner]))
@@ -817,44 +821,85 @@ function StockCampaignSkillAdjust(UTBot aBot, int TeamIndexWinner, int TeamIndex
 /** Adjusts the bot skill based on config values
  * @param B the Bot to adjus skill
  * @param P the opponent player
- * @param bWinner wheher the player is the winner/killer (false means the bot has killed the player)
+ * @param bWinner whether the player is the winner/killer (false means the bot has killed the player)
  **/
 function ConfigBasedAdjustSkill(AIController B, PlayerController P, bool bWinner)
 {
 	local float AdjustmentFactor;
+	local float AdjustedDifficulty;
 	local array<int> PlayersCount, BotsCount;
 	local array<float> TeamScore;
+	local array<float> PlayerScore;
 	local byte TeamIndexWinner, TeamIndexOther;
-	local float AdjustedDifficulty;
 	local int TeamIndex;
-
-	// slightly adjust skill
-	AdjustmentFactor = MyConfig.SkillAdjustmentFactor;
+	local bool bApplyAdjustment;
 
 	// calc player/bot and team score arrays, returns the index of the larger team (or -1)
 	TeamIndex = GetTeamPlayers(PlayersCount, BotsCount, TeamScore);
+	PlayerScore.Length = TeamScore.Length;
 
+	bApplyAdjustment = false;
 	AdjustedDifficulty = CacheGame.AdjustedDifficulty;
+	AdjustmentFactor = MyConfig.SkillAdjustmentFactor;
 
 	if (bWinner)
 	{
 		TeamIndexWinner = P.GetTeamNum();
 		TeamIndexOther = B.GetTeamNum();
 		AdjustmentFactor = Abs(AdjustmentFactor);
+
+		PlayerScore[TeamIndexWinner] = GetPlayerScoreByController(P);
+		PlayerScore[TeamIndexOther] = GetPlayerScoreByController(B);
 	}
 	else
 	{
 		TeamIndexWinner = B.GetTeamNum();
 		TeamIndexOther = P.GetTeamNum();
 		AdjustmentFactor = -1 * Abs(AdjustmentFactor);
+
+		PlayerScore[TeamIndexWinner] = GetPlayerScoreByController(B);
+		PlayerScore[TeamIndexOther] = GetPlayerScoreByController(P);
 	}
+
+	// nothing to do
+	if (TeamIndexWinner == TeamIndexOther || TeamIndex < 0)
+		return;
 
 	// only adjust loser team if needed based on score
 	if (TeamIndexWinner < TeamScore.Length && TeamIndexOther < TeamScore.Length &&
 		(TeamScore[TeamIndexOther] - MyConfig.SkillAdjustmentThreshold < TeamScore[TeamIndexWinner]))
 	{
-		AdjustedDifficulty += AdjustmentFactor;
+		bApplyAdjustment = true;
 	}
+
+	if (MyConfig.SkillAdjustmentIndividual)
+	{
+		if (bApplyAdjustment && PlayerScore[TeamIndexOther] - MyConfig.SkillAdjustmentThreshold < PlayerScore[TeamIndexWinner])
+		{
+			// adjust difficulty based on current bot's skill
+			AdjustedDifficulty = AdjustSkillValue(B.Skill, AdjustmentFactor);
+		}
+	}
+	else if (bApplyAdjustment)
+	{
+		// apply game difficulty
+		AdjustedDifficulty = AdjustSkillValue(AdjustedDifficulty, AdjustmentFactor);
+		CacheGame.AdjustedDifficulty = AdjustedDifficulty;
+	}
+
+	if (bWinner == (B.Skill < AdjustedDifficulty))
+	{
+		if (MyConfig.SkillAdjustmentLikeCampaign) ConfigBasedCampaignSkillAdjust(UTBot(B), TeamIndexWinner, TeamIndexOther);
+		else B.Skill = AdjustedDifficulty;
+		UTBot(B).ResetSkill();
+	}
+}
+
+function float AdjustSkillValue(float difficulty, float factor)
+{
+	local float AdjustedDifficulty;
+
+	AdjustedDifficulty = difficulty + factor;
 
 	// adjust game difficulty
 	if (MyConfig.SkillAdjustmentDisparity > 0.0)
@@ -864,16 +909,10 @@ function ConfigBasedAdjustSkill(AIController B, PlayerController P, bool bWinner
 	if (MyConfig.SkillAdjustmentMinSkill >= 0.0)
 		AdjustedDifficulty = FMax(AdjustedDifficulty, MyConfig.SkillAdjustmentMinSkill);
 
-	// apply difficulty
+	// clamp difficulty matching game values
 	AdjustedDifficulty = FClamp(AdjustedDifficulty, 0.0, 7.0);
-	CacheGame.AdjustedDifficulty = AdjustedDifficulty;
 
-	if (bWinner == (B.Skill < AdjustedDifficulty))
-	{
-		if (MyConfig.SkillAdjustmentLikeCampaign)
-			ConfigBasedCampaignSkillAdjust(UTBot(B), TeamIndexWinner, TeamIndexOther);
-		UTBot(B).ResetSkill();
-	}
+	return AdjustedDifficulty;
 }
 
 function ConfigBasedCampaignSkillAdjust(UTBot aBot, int TeamIndexWinner, int TeamIndexOther)
@@ -1470,6 +1509,11 @@ function bool GetController(Pawn P, out Controller C)
 	}
 
 	return C != none;
+}
+
+function float GetPlayerScoreByController(Controller C, optional float DefaultValue = 0.0)
+{
+	return (C != none && C.PlayerReplicationInfo != none) ? C.PlayerReplicationInfo.Score : DefaultValue;
 }
 
 DefaultProperties
