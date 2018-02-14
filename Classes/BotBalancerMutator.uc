@@ -68,6 +68,7 @@ var bool bCustomBotClassReplaced;
 //**********************************************************************************
 
 var const array<RecommendedPlayersMapInfo> RecommendedPlayersMap;
+var const array<RecommendedPlayersGametypeMultiplierMapInfo> RecommendedPlayersGametypeMultipliers;
 
 //**********************************************************************************
 // State for GRI initialization
@@ -1488,16 +1489,22 @@ private function CheckAndClearForceRedAll()
 
 function bool IsValidGametypeMultiplier(RecommendedPlayersGametypeMultiplierInfo gametype)
 {
+	return IsValidGametypeMultiplierMap(gametype);
+}
+
+function bool IsValidGametypeMultiplierMap(RecommendedPlayersGametypeMultiplierMapInfo gametype)
+{
 	return gametype.OffsetPost != 0 || gametype.Multiplier >= 0.0;
 }
 
 function int GetLevelRecommendedPlayers()
 {
-	local int playercount, index, index2;
+	local int playercount, index, index2, pos;
 	local name MapLookup;
 	local name GametypeLookup;
 	local RecommendedPlayersGametypeMultiplierInfo gametype;
 	local bool bGametypeSet;
+	local name ThisMapPrefix;
 
 	MapLookup = name(WorldInfo.GetMapName(true));
 
@@ -1506,7 +1513,7 @@ function int GetLevelRecommendedPlayers()
 	{
 		GametypeLookup = name(WorldInfo.Game.Class.GetPackageName()$"."$WorldInfo.Game.Class.Name);
 		index2 = RecommendedPlayersMap[index].Gametypes.Find('Gametype', GametypeLookup);
-		if (index != INDEX_NONE && IsValidGametypeMultiplier(RecommendedPlayersMap[index].Gametypes[index2]))
+		if (MyConfig.UseUIMapInfoGametypeMultiplier && index2 != INDEX_NONE && IsValidGametypeMultiplier(RecommendedPlayersMap[index].Gametypes[index2]))
 		{
 			// prioritize gametype found based on exact name
 			gametype = RecommendedPlayersMap[index].Gametypes[index2];
@@ -1514,16 +1521,36 @@ function int GetLevelRecommendedPlayers()
 		}
 		else
 		{
-			// try find gametype matching a game class (ignoring multiple cases)
-			foreach RecommendedPlayersMap[index].Gametypes(gametype)
+			if (MyConfig.UseUIMapInfoGametypeMultiplier)
 			{
-				if (!IsValidGametypeMultiplier(gametype))
-					continue;
+				// try find gametype matching a game class (ignoring multiple cases)
+				foreach RecommendedPlayersMap[index].Gametypes(gametype)
+				{
+					if (!IsValidGametypeMultiplier(gametype))
+						continue;
 
-				if (gametype.GameClass != none && ClassIsChildOf(WorldInfo.Game.Class, gametype.GameClass))
+					if (gametype.GameClass != none && ClassIsChildOf(WorldInfo.Game.Class, gametype.GameClass))
+					{
+						bGametypeSet = true;
+						break;
+					}
+				}
+			}
+
+			// fallback trying to find global gametype multiplier
+			if (!bGametypeSet && MyConfig.UseGLobalGametypeMultiplier)
+			{
+				// retrieve current map prefix
+				pos = InStr(MapLookup,"-");
+				ThisMapPrefix = name(Left(MapLookup, pos));
+
+				if (FindMatchingGametypeMultiplierByName(RecommendedPlayersGametypeMultipliers, GametypeLookup, ThisMapPrefix, gametype))
 				{
 					bGametypeSet = true;
-					break;
+				}
+				else if (FindMatchingGametypeMultiplierByClass(RecommendedPlayersGametypeMultipliers, WorldInfo.Game.Class, ThisMapPrefix, gametype))
+				{
+					bGametypeSet = true;
 				}
 			}
 		}
@@ -1545,6 +1572,86 @@ function int GetLevelRecommendedPlayers()
 	playercount += MyConfig.LevelRecommendationOffsetPost;
 	playercount = Max(playercount, 0);
 	return playercount;
+}
+
+function bool FindMatchingGametypeMultiplier(array<RecommendedPlayersGametypeMultiplierMapInfo> multipliers, name prefix, out RecommendedPlayersGametypeMultiplierMapInfo OutMultiplier)
+{
+	local int index;
+	if (multipliers.Length > 1)
+	{
+		index = multipliers.Find('MapPrefix', prefix);
+		if (index != INDEX_NONE)
+		{
+			// use gametype matching prefix
+			OutMultiplier = multipliers[index];
+			return true;
+		}
+		else
+		{
+			// remove all entries with a map prefix set
+			while (++index < multipliers.Length)
+			{
+				if (multipliers[index].MapPrefix != '')
+				{
+					multipliers.Remove(index, 1);
+					index--;
+				}
+			}
+		}
+	}
+	if (multipliers.Length > 0)
+	{
+		// multiple maybe found, use first one
+		OutMultiplier = multipliers[0];
+		return true;
+	}
+
+	return false;
+}
+
+function bool FindMatchingGametypeMultiplierByName(array<RecommendedPlayersGametypeMultiplierMapInfo> multipliers, name gametype, name prefix, out RecommendedPlayersGametypeMultiplierMapInfo OutMultiplier)
+{
+	local int offset;
+
+	offset = 0;
+	while (multipliers.Length > 0 && offset < multipliers.Length)
+	{
+		if (!IsValidGametypeMultiplierMap(multipliers[offset]) 
+			|| multipliers[offset].Gametype != gametype 
+		)
+		{
+			multipliers.Remove(offset, 1);
+		}
+		else
+		{
+			offset++;
+		}
+	}
+
+	return FindMatchingGametypeMultiplier(multipliers, prefix, OutMultiplier);
+}
+
+function bool FindMatchingGametypeMultiplierByClass(array<RecommendedPlayersGametypeMultiplierMapInfo> multipliers, class<GameInfo> gameclass, name prefix, out RecommendedPlayersGametypeMultiplierMapInfo OutMultiplier)
+{
+	local int offset;
+
+	offset = 0;
+	while (multipliers.Length > 0 && offset < multipliers.Length)
+	{
+		if (!IsValidGametypeMultiplierMap(multipliers[offset]) 
+			|| multipliers[offset].GameClass == none
+			|| !ClassIsChildOf(gameclass, multipliers[offset].GameClass)
+		)
+		{
+			multipliers.Remove(offset, 1);
+		}
+		else
+		{
+			offset++;
+		}
+	}
+
+	return FindMatchingGametypeMultiplier(multipliers, prefix, OutMultiplier);
 }
 
 `if(`notdefined(FINAL_RELEASE))
@@ -1616,6 +1723,20 @@ DefaultProperties
 	DEFAULT_TEAM_BOT=1
 	DEFAULT_TEAM_PLAYER=0
 	DEFAULT_TEAM_UNSET=255
+
+
+	// ORDER IS IMPORTANT DUE TO CLASS INHERITANCE
+
+	//// increase player count for Greed on VCTF maps
+	RecommendedPlayersGametypeMultipliers.Add((GameClass=class'UTGame.UTVehicleCTFGame',Multiplier=2.0))
+	// increase player count for Warfare which is generally too low
+	RecommendedPlayersGametypeMultipliers.Add((GameClass=class'UTGame.UTOnslaughtGame',Multiplier=2.0))
+	// increase player count for Betrayal, Betrayal is generally played on DM maps, but the teaming is different
+	RecommendedPlayersGametypeMultipliers.Add((GameClass=class'UTGame.UTBetrayalGame',Multiplier=1.5,OffsetPost=2))
+	// drastically increase player count for Greed on VCTF maps
+	RecommendedPlayersGametypeMultipliers.Add((GameClass=class'UTGame.UTGreedGame',MapPrefix="VCTF",Multiplier=2.25,OffsetPost=-2))
+	// increase player count for team games
+	RecommendedPlayersGametypeMultipliers.Add((GameClass=class'UTGame.UTTeamGame',Multiplier=1.75))
 
 
 	RecommendedPlayersMap.Add((Map="CTF-Coret",Min=8,Max=10))

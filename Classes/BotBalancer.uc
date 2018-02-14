@@ -31,6 +31,11 @@ struct RecommendedPlayersGametypeMultiplierInfo
 	}
 };
 
+struct RecommendedPlayersGametypeMultiplierMapInfo extends RecommendedPlayersGametypeMultiplierInfo
+{
+	var() name MapPrefix;
+};
+
 struct RecommendedPlayersMapInfo
 {
 	/** map name for this map info */
