@@ -1490,12 +1490,39 @@ function int GetLevelRecommendedPlayers()
 {
 	local int playercount, index;
 	local name MapLookup;
+	local name GametypeLookup;
+	local RecommendedPlayersGametypeMultiplierInfo gametype;
+	local bool bGametypeSet;
 
+	GametypeLookup = name(WorldInfo.Game.Class.GetPackageName()$"."$WorldInfo.Game.Class.Name);
 	MapLookup = name(WorldInfo.GetMapName(true));
+
 	index = RecommendedPlayersMap.Find('Map', MapLookup);
 	if (MyConfig.PreferUIMapInfo && index > INDEX_NONE && RecommendedPlayersMap[index].Min >= 0 && RecommendedPlayersMap[index].Max >= 0)
 	{
+		foreach RecommendedPlayersMap[index].Gametypes(gametype)
+		{
+			if (gametype.OffsetPost == 0 && gametype.Multiplier < 0.0)
+				continue;
+
+			if (gametype.GameClass != none && ClassIsChildOf(WorldInfo.Game.Class, gametype.GameClass))
+			{
+				bGametypeSet = true;
+				break;
+			}
+			else if (gametype.Gametype != '' && GametypeLookup == gametype.Gametype)
+			{
+				bGametypeSet = true;
+				break;
+			}
+		}
+
 		playercount = CalcMean(RecommendedPlayersMap[index].Min, RecommendedPlayersMap[index].Max);
+		if (bGametypeSet)
+		{
+			playercount	*= gametype.Multiplier < 0.0 ? 1.0 : gametype.Multiplier;
+			playercount	+= gametype.OffsetPost;
+		}
 		playercount = Max(playercount, 0);
 	}
 	else
