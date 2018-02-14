@@ -20,6 +20,8 @@ var() config float BotRatio;
 var() config bool UseLevelRecommendation;
 var() config float LevelRecommendationMultiplier;
 var() config int LevelRecommendationOffsetPost;
+/** Whether to use RecommendedPlayersMap, other use stored in-level MapInfo is used */
+var() config bool PreferUIMapInfo; 
 
 var() config bool PlayersVsBots;
 var() config int PlayersSide;
@@ -262,6 +264,7 @@ function ResetConfig()
 	UseLevelRecommendation=false;
 	LevelRecommendationMultiplier=1.0;
 	LevelRecommendationOffsetPost=0;
+	PreferUIMapInfo=true;
 
 	PlayersVsBots=false;
 	PlayersSide=-1;
@@ -335,6 +338,7 @@ function string GetSpecialValue(name PropertyName)
 		case 'UseLevelRecommendation': return OutputBool(UseLevelRecommendation);
 		case 'LevelRecommendationMultiplier': return string(LevelRecommendationMultiplier);
 		case 'LevelRecommendationOffsetPost': return string(LevelRecommendationOffsetPost);
+		case 'PreferUIMapInfo': return OutputBool(PreferUIMapInfo);
 
 		case 'PlayersVsBots': return OutputBool(PlayersVsBots);
 		case 'PlayersSide': return string(PlayersSide);
@@ -376,6 +380,7 @@ function SetSpecialValue(name PropertyName, string NewValue)
 		case 'UseLevelRecommendation': UseLevelRecommendation = ParseBool(NewValue);break;
 		case 'LevelRecommendationMultiplier': LevelRecommendationMultiplier = ParseFloat(NewValue);break;
 		case 'LevelRecommendationOffsetPost': LevelRecommendationOffsetPost = ParseInt(NewValue);break;
+		case 'PreferUIMapInfo': PreferUIMapInfo = ParseBool(NewValue);break;
 
 		case 'PlayersVsBots': PlayersVsBots = ParseBool(NewValue);break;
 		case 'PlayersSide': PlayersSide = ParseInt(NewValue);break;
@@ -482,6 +487,7 @@ DefaultProperties
 	Variables.Add("UseLevelRecommendation")
 	Variables.Add("LevelRecommendationMultiplier")
 	Variables.Add("LevelRecommendationOffsetPost")
+	Variables.Add("PreferUIMapInfo")
 	
 	Variables.Add("PlayersVsBots")
 	Variables.Add("PlayersSide")
@@ -511,6 +517,7 @@ DefaultProperties
 	UseLevelRecommendation=false
 	LevelRecommendationMultiplier=1.0
 	LevelRecommendationOffsetPost=0
+	PreferUIMapInfo=true
 
 	PlayersVsBots=false
 	PlayersSide=-1

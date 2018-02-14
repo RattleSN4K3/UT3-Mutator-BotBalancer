@@ -64,6 +64,12 @@ var byte PlayersSide;
 var bool bCustomBotClassReplaced;
 
 //**********************************************************************************
+// Variables
+//**********************************************************************************
+
+var const array<RecommendedPlayersMapInfo> RecommendedPlayersMap;
+
+//**********************************************************************************
 // State for GRI initialization
 //**********************************************************************************
 
@@ -201,10 +207,7 @@ function MatchStarting()
 	if (MyConfig.UseLevelRecommendation)
 	{
 		CacheGame.bAutoNumBots = true;
-		DesiredPlayerCount = CacheGame.LevelRecommendedPlayers();
-		DesiredPlayerCount *= MyConfig.LevelRecommendationMultiplier;
-		DesiredPlayerCount += MyConfig.LevelRecommendationOffsetPost;
-		DesiredPlayerCount = Max(DesiredPlayerCount, 0);
+		DesiredPlayerCount = GetLevelRecommendedPlayers();
 		bForceDesiredPlayerCount = true;
 	}
 	else if (CacheGame.HasOption(CacheGame.ServerOptions, "NumPlay"))
@@ -1483,6 +1486,29 @@ private function CheckAndClearForceRedAll()
 	}
 }
 
+function int GetLevelRecommendedPlayers()
+{
+	local int playercount, index;
+	local name MapLookup;
+
+	MapLookup = name(WorldInfo.GetMapName(true));
+	index = RecommendedPlayersMap.Find('Map', MapLookup);
+	if (MyConfig.PreferUIMapInfo && index > INDEX_NONE && RecommendedPlayersMap[index].Min >= 0 && RecommendedPlayersMap[index].Max >= 0)
+	{
+		playercount = CalcMean(RecommendedPlayersMap[index].Min, RecommendedPlayersMap[index].Max);
+		playercount = Max(playercount, 0);
+	}
+	else
+	{
+		playercount = CacheGame.LevelRecommendedPlayers();
+	}
+
+	playercount *= MyConfig.LevelRecommendationMultiplier;
+	playercount += MyConfig.LevelRecommendationOffsetPost;
+	playercount = Max(playercount, 0);
+	return playercount;
+}
+
 `if(`notdefined(FINAL_RELEASE))
 function GiveInventory(Pawn Other, class<Inventory> ThisInventoryClass)
 {
@@ -1530,6 +1556,11 @@ function bool GetController(Pawn P, out Controller C)
 	return C != none;
 }
 
+function int CalcMean(int minValue, int maxValue)
+{
+	return (maxValue + minValue) / 2;
+}
+
 function float GetPlayerScoreByController(Controller C, optional float DefaultValue = 0.0)
 {
 	return (C != none && C.PlayerReplicationInfo != none) ? C.PlayerReplicationInfo.Score : DefaultValue;
@@ -1547,4 +1578,79 @@ DefaultProperties
 	DEFAULT_TEAM_BOT=1
 	DEFAULT_TEAM_PLAYER=0
 	DEFAULT_TEAM_UNSET=255
+
+
+	RecommendedPlayersMap.Add((Map="CTF-Coret",Min=8,Max=10))
+	RecommendedPlayersMap.Add((Map="CTF-Hydrosis",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="CTF-LostCause",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="CTF-Morbid",Min=6,Max=10))
+	RecommendedPlayersMap.Add((Map="CTF-Nanoblack",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="CTF-OmicronDawn",Min=8,Max=10))
+	RecommendedPlayersMap.Add((Map="CTF-Reflection",Min=6,Max=8))
+	RecommendedPlayersMap.Add((Map="CTF-Strident",Min=6,Max=8))
+	RecommendedPlayersMap.Add((Map="CTF-Vertebrae",Min=10,Max=12))
+	RecommendedPlayersMap.Add((Map="CTF-Shaft",Min=10,Max=12))
+
+	RecommendedPlayersMap.Add((Map="CTF-FacingWorlds",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="CTF-Searchlight",Min=12,Max=16))
+
+	RecommendedPlayersMap.Add((Map="vCTF-Containment",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="vCTF-Corruption",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="vCTF-Kargo",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="vCTF-Necropolis",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="vCTF-Rails",Min=10,Max=14))
+	RecommendedPlayersMap.Add((Map="vCTF-Sandstorm",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="vCTF-Stranded",Min=6,Max=12))
+	RecommendedPlayersMap.Add((Map="vCTF-Suspense",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="vCTF-Suspense_Necris",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="vCTF-Stranded",Min=8,Max=14))
+
+	RecommendedPlayersMap.Add((Map="DM-Arsenal",Min=6,Max=10))
+	RecommendedPlayersMap.Add((Map="DM-Biohazard",Min=2,Max=4))
+	RecommendedPlayersMap.Add((Map="DM-CarbonFire",Min=4,Max=8))
+	RecommendedPlayersMap.Add((Map="DM-DarkMatch",Min=5,Max=10))
+	RecommendedPlayersMap.Add((Map="DM-Deck",Min=4,Max=8))
+	RecommendedPlayersMap.Add((Map="DM-Defiance",Min=4,Max=8))
+	RecommendedPlayersMap.Add((Map="DM-Deimos",Min=6,Max=10))
+	RecommendedPlayersMap.Add((Map="DM-Diesel",Min=2,Max=6))
+	RecommendedPlayersMap.Add((Map="DM-Fearless",Min=2,Max=6))
+	RecommendedPlayersMap.Add((Map="DM-Gateway",Min=6,Max=10))
+	RecommendedPlayersMap.Add((Map="DM-KBarge",Min=2,Max=8))
+	RecommendedPlayersMap.Add((Map="DM-HeatRay",Min=4,Max=8))
+	RecommendedPlayersMap.Add((Map="DM-OceanRelic",Min=4,Max=8))
+	RecommendedPlayersMap.Add((Map="DM-RisingSun",Min=2,Max=4))
+	RecommendedPlayersMap.Add((Map="DM-Sanctuary",Min=4,Max=8))
+	RecommendedPlayersMap.Add((Map="DM-Sentinel",Min=2,Max=4))
+	RecommendedPlayersMap.Add((Map="DM-ShangriLa",Min=6,Max=10))
+	RecommendedPlayersMap.Add((Map="DM-EdenInc",Min=3,Max=9))
+	RecommendedPlayersMap.Add((Map="DM-Turbine",Min=2,Max=7))
+
+	RecommendedPlayersMap.Add((Map="DM-Morbias",Min=2,Max=8))
+
+
+	RecommendedPlayersMap.Add((Map="WAR-Avalanche",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-AvalancheTwoFronts",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-ColdHarbor",Min=10,Max=14))
+	RecommendedPlayersMap.Add((Map="WAR-Confrontation",Min=10,Max=16))
+	RecommendedPlayersMap.Add((Map="WAR-Downtown",Min=8,Max=14))
+	RecommendedPlayersMap.Add((Map="WAR-Downtown_Necris",Min=8,Max=14))
+	RecommendedPlayersMap.Add((Map="WAR-DowntownTwoFronts",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-Dusk",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-DuskFreeMine",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-Floodgate",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-Hostile",Min=10,Max=16))
+	RecommendedPlayersMap.Add((Map="WAR-Islander",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-IslanderNecris",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-MarketDistrict",Min=6,Max=8))
+	RecommendedPlayersMap.Add((Map="WAR-OnyxCoast",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-PowerSurge",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-Serenity",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-SerenityNecris",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-Sinkhole",Min=6,Max=8))
+	RecommendedPlayersMap.Add((Map="WAR-TankCrossing",Min=8,Max=10))
+	RecommendedPlayersMap.Add((Map="WAR-Torlan",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-TorlanClassic",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-TorlanDoublePrime",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-TorlanNecris",Min=8,Max=12))
+	RecommendedPlayersMap.Add((Map="WAR-TorlanShort",Min=8,Max=12))
 }
