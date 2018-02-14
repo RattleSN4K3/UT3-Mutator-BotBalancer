@@ -38,7 +38,8 @@ var int DesiredPlayerCount;
 var bool bOriginalForceAllRed;
 var bool bIsOriginalForceAllRedSet;
 
-var private UTTeamGame CacheGame;
+var private UTDeathmatch CacheGame;
+var private UTTeamGame CacheTeamGame;
 var private class<UTBot> CacheBotClass;
 var private array<UTBot> BotsWaitForRespawn;
 var private array<PlayerController> PlayersWaitForChangeTeam;
@@ -89,16 +90,15 @@ auto state InitGRI
 // Inherited functions
 //**********************************************************************************
 
-`if(`notdefined(FINAL_RELEASE))
 //
 // Called immediately before gameplay begins.
 //
 event PreBeginPlay()
 {
 	`Log(name$"::PreBeginPlay",bShowDebug,'BotBalancer');
+	InitConfig();
 	super.PreBeginPlay();
 }
-`endif
 
 // Called immediately after gameplay begins.
 event PostBeginPlay()
@@ -106,15 +106,14 @@ event PostBeginPlay()
 	`Log(name$"::PostBeginPlay",bShowDebug,'BotBalancer');
 	super.PostBeginPlay();
 
-	CacheGame = UTTeamGame(WorldInfo.Game);
-	if (CacheGame == none) //@TODO: destroy in Duel Game
+	CacheGame = UTDeathmatch(WorldInfo.Game);
+	CacheTeamGame = UTTeamGame(WorldInfo.Game);
+	if (CacheTeamGame == none && !MyConfig.SupportDeathmatch) //@TODO: destroy in Duel Game
 	{
 		`Warn(name$"::InitMutator - No team game. Destroy mutator!!!",bShowDebug,'BotBalancer');
 		Destroy();
 		return;
 	}
-
-	InitConfig();
 
 	// Game rules for notify events of scores and kills
 	CreateGameRules();
@@ -146,10 +145,10 @@ event Destroyed()
 function bool MutatorIsAllowed()
 {
 	`Log(name$"::MutatorIsAllowed",bShowDebug,'BotBalancer');
-	`Log(name$"::MutatorIsAllowed - Return:"@(UTTeamGame(WorldInfo.Game) != None && UTDuelGame(WorldInfo.Game) == None && Super.MutatorIsAllowed()),bShowDebug,'BotBalancer');
+	`Log(name$"::MutatorIsAllowed - Return:"@((MyConfig.SupportDeathmatch || UTTeamGame(WorldInfo.Game) != None) && UTDuelGame(WorldInfo.Game) == None && Super.MutatorIsAllowed()),bShowDebug,'BotBalancer');
 
 	//only allow mutator in Team games (except Duel)
-	return UTTeamGame(WorldInfo.Game) != None && UTDuelGame(WorldInfo.Game) == None && Super.MutatorIsAllowed();
+	return (MyConfig.SupportDeathmatch || UTTeamGame(WorldInfo.Game) != None) && UTDuelGame(WorldInfo.Game) == None && Super.MutatorIsAllowed();
 }
 
 function InitMutator(string Options, out string ErrorMessage)
@@ -426,8 +425,11 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 		// also remove invalid references, just in case
 		PlayersWaitForRequestTeam.RemoveItem(none);
 
-		SemaForceAllRed(true);
-		CacheGame.bForceAllRed = false;
+		if (CacheTeamGame != none)
+		{
+			SemaForceAllRed(true);
+			CacheTeamGame.bForceAllRed = false;
+		}
 
 		PlayersWaitForChangeTeam.AddItem(PC);
 
@@ -674,15 +676,18 @@ function OnBotDeath_PreCheck(Pawn Other, Object Sender)
 	}
 
 	// set bForceAllRed to bail out TooManyBots until Player respawned
-	SemaForceAllRed(true);
-	CacheGame.bForceAllRed = true;
+	if (CacheTeamGame != none)
+	{
+		SemaForceAllRed(true);
+		CacheTeamGame.bForceAllRed = true;
+	}
 }
 
 //@TODO: remove? as it is unused
 function OnBotDeath_PostCheck(Pawn Other, Actor Sender)
 {
 	`log(name$"::OnBotDeath_PostCheck - Other:"@Other$" - Sender:"@Sender,bShowDebug,'BotBalancer');
-	//CacheGame.bForceAllRed = false;
+	//CacheTeamGame.bForceAllRed = false;
 }
 
 function NotifyScoreObjective(PlayerReplicationInfo Scorer, Int Score)
@@ -695,7 +700,7 @@ function NotifyScoreKill(Controller Killer, Controller Killed)
 {
 	`Log(self$"::NotifyScoreKill - Killer:"@Killer$" - Killed:"@Killed,bShowDebug,'BotBalancer');
  
-	if (MyConfig.AdjustBotSkill)
+	if (MyConfig.AdjustBotSkill && CacheTeamGame != none)
 	{
 		switch (MyConfig.SkillAdjustment)
 		{
@@ -792,11 +797,11 @@ function StockCampaignSkillAdjust(UTBot aBot, int TeamIndexWinner, int TeamIndex
 		if ( aBot.PlayerReplicationInfo.Team.TeamIndex == TeamIndexOther )
 		{
 			// reduced enemy skill slightly if their team is bigger
-			if (CacheGame.Teams[TeamIndexOther].Size > CacheGame.Teams[TeamIndexWinner].size )
+			if (CacheTeamGame.Teams[TeamIndexOther].Size > CacheTeamGame.Teams[TeamIndexWinner].size )
 			{
 				aBot.Skill -= 0.5;
 			}
-			else if ( (CacheGame.Teams[TeamIndexOther].Size < CacheGame.Teams[TeamIndexWinner].Size) && (CacheGame.NumPlayers > 1) )
+			else if ( (CacheTeamGame.Teams[TeamIndexOther].Size < CacheTeamGame.Teams[TeamIndexWinner].Size) && (CacheGame.NumPlayers > 1) )
 			{
 				aBot.Skill += 0.75;
 			}
@@ -924,11 +929,11 @@ function ConfigBasedCampaignSkillAdjust(UTBot aBot, int TeamIndexWinner, int Tea
 		if ( aBot.PlayerReplicationInfo.Team.TeamIndex == TeamIndexOther )
 		{
 			// reduced enemy skill slightly if their team is bigger
-			if (CacheGame.Teams[TeamIndexOther].Size > CacheGame.Teams[TeamIndexWinner].Size )
+			if (CacheTeamGame.Teams[TeamIndexOther].Size > CacheTeamGame.Teams[TeamIndexWinner].Size )
 			{
 				aBot.Skill -= MyConfig.SkillAdjustmentCampaignReduce;
 			}
-			else if ( (CacheGame.Teams[TeamIndexOther].Size < CacheGame.Teams[TeamIndexWinner].Size) && (CacheGame.NumPlayers > 1) )
+			else if ( (CacheTeamGame.Teams[TeamIndexOther].Size < CacheTeamGame.Teams[TeamIndexWinner].Size) && (CacheGame.NumPlayers > 1) )
 			{
 				aBot.Skill += MyConfig.SkillAdjustmentCampaignIncrease;
 			}
@@ -990,7 +995,9 @@ function CreateGameRules()
 function SetPlayersSide()
 {
 	// set random team if desired
-	if (MyConfig.PlayersSide < 0)
+	if (CacheTeamGame == none)
+		PlayersSide = DEFAULT_TEAM_UNSET;
+	else if (MyConfig.PlayersSide < 0)
 		PlayersSide = Rand(WorldInfo.GRI.Teams.Length);
 	else if (MyConfig.PlayersSide < WorldInfo.GRI.Teams.Length)
 		PlayersSide = MyConfig.PlayersSide;
@@ -1094,16 +1101,19 @@ function int GetNextTeamIndex(bool bBot)
 
 		// use original algorithm to find proper team index
 		// to prevent using always the Red team, we swap that flag temporarily
-		bSwap = CacheGame.bForceAllRed;
-		CacheGame.bForceAllRed = false;
+		if (CacheTeamGame != none)
+		{
+			bSwap = CacheTeamGame.bForceAllRed;
+			CacheTeamGame.bForceAllRed = false;
 		
-		// find the proper team index for the player
-		if (bBot) BotTeam = CacheGame.GetBotTeam();
-		if (BotTeam != none) TeamIndex = BotTeam.TeamIndex;
-		else TeamIndex = CacheGame.PickTeam(0, none);
+			// find the proper team index for the player
+			if (bBot) BotTeam = CacheGame.GetBotTeam();
+			if (BotTeam != none) TeamIndex = BotTeam.TeamIndex;
+			else TeamIndex = CacheGame.PickTeam(0, none);
 
-		CacheGame.bForceAllRed = bSwap;
-		return TeamIndex;
+			CacheTeamGame.bForceAllRed = bSwap;
+			return TeamIndex;
+		}
 	}
 
 	// use random index if possible (otherwise unset team)
@@ -1119,8 +1129,11 @@ function AddBots(int InDesiredPlayerCount)
 	OldBotCount = BotsSpawnedOnce.Length;
 
 	// force TooManyBots fail out. it is called right on initial spawn for bots
-	SemaForceAllRed(true);
-	CacheGame.bForceAllRed = true;
+	if (CacheTeamGame != none)
+	{
+		SemaForceAllRed(true);
+		CacheTeamGame.bForceAllRed = true;
+	}
 
 	DesiredPlayerCount = Clamp(InDesiredPlayerCount, 1, 32);
 	while (CacheGame.NumPlayers + CacheGame.NumBots < DesiredPlayerCount)
@@ -1132,7 +1145,7 @@ function AddBots(int InDesiredPlayerCount)
 		TeamNum = GetNextTeamIndex(true);
 		bot = CacheGame.AddBot(,true,TeamNum);
 
-		// revert to null class to preven adding bots;
+		// revert to null class to prevent adding bots;
 		CacheGame.BotClass = class'BotBalancerNullBot';
 
 		if (bot == none)
@@ -1151,7 +1164,7 @@ function AddBots(int InDesiredPlayerCount)
 		SemaForceAllRed(false);
 	}
 
-	if (OldBotCount != BotsSpawnedOnce.Length && !CacheGame.bForceAllRed)
+	if (OldBotCount != BotsSpawnedOnce.Length && (CacheTeamGame == none || !CacheTeamGame.bForceAllRed))
 	{
 		ResetBotOrders(tempbots);
 	}
@@ -1231,9 +1244,12 @@ function SwitchBot(UTBot bot, int TeamNum)
 {
 	local TeamInfo OldTeam;
 
+	if (CacheTeamGame == none)
+		return;
+
 	OldTeam = bot.PlayerReplicationInfo.Team;
 	SemaForceAllRed(true);
-	CacheGame.bForceAllRed = false;
+	CacheTeamGame.bForceAllRed = false;
 	if (CacheGame.ChangeTeam(bot, TeamNum, true) && CacheGame.bTeamGame && bot.PlayerReplicationInfo.Team != OldTeam)
 	{
 		if (bot.Pawn != None)
@@ -1444,15 +1460,18 @@ function int GetTeamPlayers(out array<int> PlayersCount, out array<int> BotsCoun
 
 private function SemaForceAllRed(bool bSet)
 {
+	if (CacheTeamGame == none)
+		return;
+
 	if (bSet && !bIsOriginalForceAllRedSet)
 	{
 		bIsOriginalForceAllRedSet = true;
-		bOriginalForceAllRed = CacheGame.bForceAllRed;
+		bOriginalForceAllRed = CacheTeamGame.bForceAllRed;
 	}
 	else if (!bSet && bIsOriginalForceAllRedSet)
 	{
 		bIsOriginalForceAllRedSet = false;
-		CacheGame.bForceAllRed = bOriginalForceAllRed;
+		CacheTeamGame.bForceAllRed = bOriginalForceAllRed;
 	}
 }
 

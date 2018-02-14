@@ -24,6 +24,7 @@ var() config int LevelRecommendationOffsetPost;
 var() config bool PlayersVsBots;
 var() config int PlayersSide;
 var() config bool AllowTeamChangeVsBots;
+var() config bool SupportDeathmatch;
 
 var() config bool AdjustBotSkill;
 var() config ESkillAdjustmentAlgorithm SkillAdjustment;
@@ -514,6 +515,7 @@ DefaultProperties
 	PlayersVsBots=false
 	PlayersSide=-1
 	AllowTeamChangeVsBots=false
+	SupportDeathmatch=true
 
 	AdjustBotSkill=true
 	SkillAdjustment=Algo_Adjustable
