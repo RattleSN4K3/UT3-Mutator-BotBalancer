@@ -1486,34 +1486,45 @@ private function CheckAndClearForceRedAll()
 	}
 }
 
+function bool IsValidGametypeMultiplier(RecommendedPlayersGametypeMultiplierInfo gametype)
+{
+	return gametype.OffsetPost != 0 || gametype.Multiplier >= 0.0;
+}
+
 function int GetLevelRecommendedPlayers()
 {
-	local int playercount, index;
+	local int playercount, index, index2;
 	local name MapLookup;
 	local name GametypeLookup;
 	local RecommendedPlayersGametypeMultiplierInfo gametype;
 	local bool bGametypeSet;
 
-	GametypeLookup = name(WorldInfo.Game.Class.GetPackageName()$"."$WorldInfo.Game.Class.Name);
 	MapLookup = name(WorldInfo.GetMapName(true));
 
 	index = RecommendedPlayersMap.Find('Map', MapLookup);
 	if (MyConfig.PreferUIMapInfo && index > INDEX_NONE && RecommendedPlayersMap[index].Min >= 0 && RecommendedPlayersMap[index].Max >= 0)
 	{
-		foreach RecommendedPlayersMap[index].Gametypes(gametype)
+		GametypeLookup = name(WorldInfo.Game.Class.GetPackageName()$"."$WorldInfo.Game.Class.Name);
+		index2 = RecommendedPlayersMap[index].Gametypes.Find('Gametype', GametypeLookup);
+		if (index != INDEX_NONE && IsValidGametypeMultiplier(RecommendedPlayersMap[index].Gametypes[index2]))
 		{
-			if (gametype.OffsetPost == 0 && gametype.Multiplier < 0.0)
-				continue;
+			// prioritize gametype found based on exact name
+			gametype = RecommendedPlayersMap[index].Gametypes[index2];
+			bGametypeSet = true;
+		}
+		else
+		{
+			// try find gametype matching a game class (ignoring multiple cases)
+			foreach RecommendedPlayersMap[index].Gametypes(gametype)
+			{
+				if (!IsValidGametypeMultiplier(gametype))
+					continue;
 
-			if (gametype.GameClass != none && ClassIsChildOf(WorldInfo.Game.Class, gametype.GameClass))
-			{
-				bGametypeSet = true;
-				break;
-			}
-			else if (gametype.Gametype != '' && GametypeLookup == gametype.Gametype)
-			{
-				bGametypeSet = true;
-				break;
+				if (gametype.GameClass != none && ClassIsChildOf(WorldInfo.Game.Class, gametype.GameClass))
+				{
+					bGametypeSet = true;
+					break;
+				}
 			}
 		}
 
