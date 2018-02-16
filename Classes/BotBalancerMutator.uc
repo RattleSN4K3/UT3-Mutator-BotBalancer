@@ -1575,7 +1575,7 @@ function bool GetAdjustedTeamPlayerCount(out array<int> PlayersCount, out array<
 		index = WorldInfo.GRI.PRIArray[i].Team.TeamIndex;
 		if (PlayersCount.Length <= index)
 		{
-			PlayersCount.Add(index-PlayersCount.Length+1);
+			PlayersCount.Length = index-PlayersCount.Length+1;
 		}
 
 		PlayersCount[index]++;
@@ -1753,7 +1753,7 @@ function int GetLevelRecommendedPlayers()
 			}
 
 			// fallback trying to find global gametype multiplier
-			if (!bGametypeSet && MyConfig.UseGLobalGametypeMultiplier)
+			if (!bGametypeSet && MyConfig.UseGlobalGametypeMultiplier)
 			{
 				// retrieve current map prefix
 				pos = InStr(MapLookup,"-");
