@@ -1121,7 +1121,9 @@ function int GetNextTeamIndex(bool bBot)
 	}
 
 	// use random index if possible (otherwise unset team)
-	return (WorldInfo.GRI != none ? Rand(WorldInfo.GRI.Teams.Length) : int(DEFAULT_TEAM_UNSET));
+	if (WorldInfo.GRI != none && WorldInfo.GRI.Teams.Length > 0) TeamIndex = WorldInfo.GRI.Teams[Rand(WorldInfo.GRI.Teams.Length)].TeamIndex;
+	else TeamIndex = int(DEFAULT_TEAM_UNSET);
+	return TeamIndex;
 }
 
 function AddBots(int InDesiredPlayerCount)
