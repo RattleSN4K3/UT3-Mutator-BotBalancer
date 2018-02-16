@@ -54,6 +54,8 @@ var private array<UTBot> BotsSpawnedOnce;
 
 var BotBalancerGameRules ScoreHandler;
 
+var private array<BotBalancerTimerHelper> ParamTimers;
+
 /** Set if custom bot class has been replaced */
 var bool bCustomBotClassReplaced;
 
@@ -147,7 +149,9 @@ event Destroyed()
 		ScoreHandler = none;
 	}
 
+	ParamTimers.Length = 0;
 	MyConfig = none;
+
 	super.Destroyed();
 }
 
@@ -459,6 +463,9 @@ function bool AllowChangeTeam(Controller Other, out int num, bool bNewTeam)
 		parmtimer.PC = PC;
 		parmtimer.Callback = self;
 		SetTimer(0.001, false, 'TimedChangedTeam', parmtimer);
+
+		// add to array to prevent possible GC-crash
+		ParamTimers.AddItem(parmtimer);
 	}
 
 	if (PlayersVsBots)
@@ -522,6 +529,9 @@ function bool AllowBecomeActivePlayer(PlayerController P)
 		parmtimer.PC = P;
 		parmtimer.Callback = self;
 		SetTimer(0.001, false, 'TimedBecamePlayer', parmtimer);
+
+		// add to array to prevent possible GC-crash
+		ParamTimers.AddItem(parmtimer);
 	}
 
 	return ret;
@@ -756,14 +766,16 @@ event TimerCheckPlayerCount()
 	}
 }
 
-event TimerChangedTeam(PlayerController PC)
+event TimerChangedTeam(BotBalancerTimerHelper Timer, PlayerController PC)
 {
+	ParamTimers.RemoveItem(Timer);
 	PlayersWaitForChangeTeam.RemoveItem(PC);
 	CheckAndClearForceRedAll();
 }
 
-event TimerBecamePlayer(PlayerController PC)
+event TimerBecamePlayer(BotBalancerTimerHelper Timer, PlayerController PC)
 {
+	ParamTimers.RemoveItem(Timer);
 	PlayersWaitForRequestTeam.RemoveItem(PC);
 }
 

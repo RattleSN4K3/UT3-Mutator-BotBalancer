@@ -5,19 +5,25 @@ class BotBalancerTimerHelper extends Object;
 var PlayerController PC;
 var BotBalancerMutator Callback;
 
+var bool bCalled;
+
 event TimedChangedTeam()
 {
+	bCalled = true;
+
 	if (PC != none && Callback != none)
 	{
-		Callback.TimerChangedTeam(PC);
+		Callback.TimerChangedTeam(self, PC);
 	}
 }
 
 event TimedBecamePlayer()
 {
+	bCalled = true;
+
 	if (PC != none && Callback != none)
 	{
-		Callback.TimerBecamePlayer(PC);
+		Callback.TimerBecamePlayer(self, PC);
 	}
 }
 
