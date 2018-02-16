@@ -107,8 +107,19 @@ auto state InitGRI
 event PreBeginPlay()
 {
 	`Log(name$"::PreBeginPlay",bShowDebug,'BotBalancer');
+
+	CacheGame = UTDeathmatch(WorldInfo.Game);
+	CacheTeamGame = UTTeamGame(WorldInfo.Game);
+
 	InitConfig();
 	super.PreBeginPlay();
+
+	if ((CacheGame == none && CacheTeamGame == none) || IsPendingKill())
+	{
+		`Warn(name$"::PreBeginPlay - No team game or not allowed. Destroy mutator!!!",bShowDebug,'BotBalancer');
+		Destroy();
+		return;
+	}
 }
 
 // Called immediately after gameplay begins.
@@ -117,14 +128,9 @@ event PostBeginPlay()
 	`Log(name$"::PostBeginPlay",bShowDebug,'BotBalancer');
 	super.PostBeginPlay();
 
-	CacheGame = UTDeathmatch(WorldInfo.Game);
-	CacheTeamGame = UTTeamGame(WorldInfo.Game);
-	if (CacheTeamGame == none && !MyConfig.SupportDeathmatch) //@TODO: destroy in Duel Game
-	{
-		`Warn(name$"::InitMutator - No team game. Destroy mutator!!!",bShowDebug,'BotBalancer');
-		Destroy();
+	// abort if mutator is not allowed to be used
+	if (IsPendingKill())
 		return;
-	}
 
 	// Game rules for notify events of scores and kills
 	CreateGameRules();
