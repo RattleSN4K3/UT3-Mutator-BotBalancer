@@ -25,7 +25,7 @@ var() config int LevelRecommendationOffsetPost;
 /** Whether to use RecommendedPlayersMap, other use stored in-level MapInfo is used */
 var() config bool PreferUIMapInfo;
 var() config bool UseUIMapInfoGametypeMultiplier;
-var() config bool UseGLobalGametypeMultiplier;
+var() config bool UseGlobalGametypeMultiplier;
 
 var() config bool PlayersVsBots;
 var() config int PlayersSide;
@@ -142,7 +142,7 @@ final function SaveConfigCustom()
 `if(`notdefined(FINAL_RELEASE))
 `if(`notdefined(ALLOW_PERSISTENT))
 `if(`isdefined(CLEAR_PERSISTENT))
-			// as persitent registry entries are not cleared (only in editor)
+			// as persistent registry entries are not cleared (only in editor)
 			// we have to create an object within (living inside) the registry provider
 			// which let us have access into protected members to remove the config property
 			remover = new(RegistryProvider) class'BotBalancerPersistentConfigHelper';
@@ -244,7 +244,7 @@ final function Init()
 final function Validate()
 {
 	if (BotRatio <= 0.0) BotRatio = 2.0;
-	if (TeamRatio <= 0.0) TeamRatio = 3.0;
+	if (TeamRatio <= 0.0) TeamRatio = 2.0;
 
 	if (LevelRecommendationMultiplier < 0)
 		LevelRecommendationMultiplier = Abs(LevelRecommendationMultiplier);
@@ -268,7 +268,7 @@ function ResetConfig()
 	`Log(name$"::ResetConfig",bShowDebug,'BotBalancer');
 
 	BotRatio=2.0;
-	TeamRatio=3.0;
+	TeamRatio=2.0;
 
 	UseLevelRecommendation=false;
 	LevelRecommendationMultiplier=1.0;
@@ -276,11 +276,12 @@ function ResetConfig()
 
 	PreferUIMapInfo=true;
 	UseUIMapInfoGametypeMultiplier=true;
-	UseGLobalGametypeMultiplier=true;
+	UseGlobalGametypeMultiplier=true;
 
 	PlayersVsBots=false;
 	PlayersSide=-1;
 	AllowTeamChangeVsBots=false;
+	SupportDeathmatch=false;
 
 	AdjustBotSkill=true;
 	SkillAdjustment=Algo_Adjustable;
@@ -357,11 +358,12 @@ function string GetSpecialValue(name PropertyName)
 
 		case 'PreferUIMapInfo': return OutputBool(PreferUIMapInfo);
 		case 'UseUIMapInfoGametypeMultiplier': return OutputBool(UseUIMapInfoGametypeMultiplier);
-		case 'UseGLobalGametypeMultiplier': return OutputBool(UseGLobalGametypeMultiplier);
+		case 'UseGlobalGametypeMultiplier': return OutputBool(UseGlobalGametypeMultiplier);
 
 		case 'PlayersVsBots': return OutputBool(PlayersVsBots);
 		case 'PlayersSide': return string(PlayersSide);
 		case 'AllowTeamChangeVsBots': return OutputBool(AllowTeamChangeVsBots);
+		case 'SupportDeathmatch': return OutputBool(SupportDeathmatch);
 
 		case 'AdjustBotSkill': return OutputBool(AdjustBotSkill);
 		case 'SkillAdjustment': return string(int(SkillAdjustment));
@@ -406,11 +408,12 @@ function SetSpecialValue(name PropertyName, string NewValue)
 
 		case 'PreferUIMapInfo': PreferUIMapInfo = ParseBool(NewValue);break;
 		case 'UseUIMapInfoGametypeMultiplier': UseUIMapInfoGametypeMultiplier = ParseBool(NewValue);break;
-		case 'UseGLobalGametypeMultiplier': UseGLobalGametypeMultiplier = ParseBool(NewValue);break;
+		case 'UseGlobalGametypeMultiplier': UseGlobalGametypeMultiplier = ParseBool(NewValue);break;
 
 		case 'PlayersVsBots': PlayersVsBots = ParseBool(NewValue);break;
 		case 'PlayersSide': PlayersSide = ParseInt(NewValue);break;
 		case 'AllowTeamChangeVsBots': AllowTeamChangeVsBots = ParseBool(NewValue);break;
+		case 'SupportDeathmatch': SupportDeathmatch = ParseBool(NewValue);break;
 
 		case 'AdjustBotSkill': AdjustBotSkill = ParseBool(NewValue);break;
 		case 'SkillAdjustment': SkillAdjustment = ESkillAdjustmentAlgorithm(int(NewValue));break;
@@ -520,11 +523,12 @@ DefaultProperties
 
 	Variables.Add("PreferUIMapInfo")
 	Variables.Add("UseUIMapInfoGametypeMultiplier")
-	Variables.Add("UseGLobalGametypeMultiplier")
+	Variables.Add("UseGlobalGametypeMultiplier")
 	
 	Variables.Add("PlayersVsBots")
 	Variables.Add("PlayersSide")
 	Variables.Add("AllowTeamChangeVsBots")
+	Variables.Add("SupportDeathmatch")
 
 	Variables.Add("AdjustBotSkill")
 	Variables.Add("SkillAdjustment")
@@ -549,15 +553,15 @@ DefaultProperties
 	// ---=== Config ===---
 
 	BotRatio=2.0
-	TeamRatio=3.0
+	TeamRatio=2.0
 
-	UseLevelRecommendation=false
+	UseLevelRecommendation=true
 	LevelRecommendationMultiplier=1.0
 	LevelRecommendationOffsetPost=0
 
 	PreferUIMapInfo=true
 	UseUIMapInfoGametypeMultiplier=true
-	UseGLobalGametypeMultiplier=true
+	UseGlobalGametypeMultiplier=true
 
 	PlayersVsBots=false
 	PlayersSide=-1
