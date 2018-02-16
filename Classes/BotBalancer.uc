@@ -54,6 +54,15 @@ struct RecommendedPlayersMapInfo
 	}
 };
 
+//**********************************************************************************
+// Helper
+//**********************************************************************************
+
+simulated static function bool IsCharDataEmpty(CustomCharData CharData)
+{
+	return CharData.FamilyID == "" || CharData.FamilyID ~= "NONE";
+}
+
 DefaultProperties
 {
 }

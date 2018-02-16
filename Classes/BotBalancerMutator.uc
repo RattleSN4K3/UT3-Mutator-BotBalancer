@@ -26,6 +26,9 @@ var() const byte DEFAULT_TEAM_PLAYER;
 /** Set when GRI is initialized */
 var bool bGRIInitialized;
 
+/** Set when the mutator is early initialized */
+var bool bEarlyInitialized;
+
 /** Single instanced config instance which holds all the config variables */
 var BotBalancerConfig MyConfig;
 
@@ -190,6 +193,8 @@ function SetGRI(GameReplicationInfo GRI)
 
 	bGRIInitialized = true;
 	GotoState('');
+
+	EarlyInitialize();
 }
 
 // called when gameplay actually starts
@@ -265,6 +270,7 @@ function MatchStarting()
 }
 
 `if(`notdefined(FINAL_RELEASE))
+
 function ModifyLogin(out string Portal, out string Options)
 {
 	`Log(name$"::ModifyLogin - Portal:"@Portal$" - Options:"@Options,bShowDebug,'BotBalancer');
@@ -277,6 +283,8 @@ function NotifyLogin(Controller NewPlayer)
 
 	`Log(name$"::NotifyLogin - NewPlayer:"@NewPlayer,bShowDebug,'BotBalancer');
 	super.NotifyLogin(NewPlayer);
+
+	EarlyInitialize();
 
 	PC = PlayerController(NewPlayer);
 	if (PC != none && PC.bIsPlayer && PC.PlayerReplicationInfo != none)
@@ -476,6 +484,8 @@ function NotifySetTeam(Controller Other, TeamInfo OldTeam, TeamInfo NewTeam, boo
 {
 	`Log(name$"::NotifySetTeam - Other:"@Other$" - OldTeam:"@OldTeam$" - NewTeam:"@NewTeam$" - bNewTeam:"@bNewTeam,bShowDebug,'BotBalancer');
 	super.NotifySetTeam(Other, OldTeam, NewTeam, bNewTeam);
+
+	EarlyInitialize();
 
 	if (PlayerController(Other) != none && bNewTeam)
 	{
@@ -1081,6 +1091,52 @@ function InitConfig()
 	if (bGRIInitialized) SetPlayersSide();
 }
 
+function EarlyInitialize()
+{
+	if (MyConfig.EarlyInitialization && !bEarlyInitialized)
+	{
+		`Log(name$"::EarlyInitialize",bShowDebug,'BotBalancer');
+		bEarlyInitialized = true;
+
+		MatchStarting();
+		ClearTimer('TimerCheckPlayerCount');
+		TimerCheckPlayerCount();
+	}
+}
+
+function LoadCharacter(Controller NewPlayer)
+{
+	local UTGameReplicationInfo GRI;
+	local UTPlayerReplicationInfo UTPRI;
+
+	if (NewPlayer == none)
+		return;
+
+	GRI = UTGameReplicationInfo(WorldInfo.GRI);
+	UTPRI = UTPlayerReplicationInfo(NewPlayer.PlayerReplicationInfo);
+	if (UTPRI == none || class'BotBalancer'.static.IsCharDataEmpty(UTPRI.CharacterData))
+		return;
+
+	//UTPRI.CharacterData = CharData;
+	UTPRI.CharacterDataChangeCount++;
+	UTPRI.bForceNetUpdate = true;
+
+	// if bAlwaysLoadCustomCharacters is set, the custom models will always load
+	// we just load the char manually if it's not set
+
+	if (GRI != none && WorldInfo.NetMode != NM_DedicatedServer && 
+		GRI.bProcessedInitialCharacters && !GRI.bAlwaysLoadCustomCharacters
+		)
+	{
+		GRI.bAlwaysLoadCustomCharacters = true;
+		GRI.ProcessCharacterData(UTPRI);
+		//GRI.TickCharacterMeshCreation();
+		//GRI.ProcessCharacterData(UTPRI);
+
+		GRI.bAlwaysLoadCustomCharacters = false;
+	}
+}
+
 function CreateGameRules()
 {
 	ScoreHandler = Spawn(class'BotBalancerGameRules');
@@ -1255,6 +1311,9 @@ function AddBots(int InDesiredPlayerCount)
 
 		if (bot == none)
 			break;
+
+		if (MyConfig.TryLoadingCharacterModels)
+			LoadCharacter(bot);
 		
 		tempbots.AddItem(bot);
 		if (BotsSpawnedOnce.Find(bot) == INDEX_NONE)

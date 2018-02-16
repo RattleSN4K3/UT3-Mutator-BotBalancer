@@ -56,6 +56,9 @@ var() config float SkillAdjustmentMinSkill;
 /** The max skill level */
 var() config float SkillAdjustmentMaxSkill;
 
+var() config bool EarlyInitialization;
+var() config bool TryLoadingCharacterModels;
+
 // ---=== UT3 override config ===---
 
 var() config bool bPlayersBalanceTeams;
@@ -292,6 +295,9 @@ function ResetConfig()
 	SkillAdjustmentMinSkill=0;
 	SkillAdjustmentMaxSkill=-1;
 
+	EarlyInitialization=true;
+	TryLoadingCharacterModels=true;
+
 	// --- UT3 override config ---
 	bPlayersBalanceTeams=true;
 }
@@ -370,6 +376,9 @@ function string GetSpecialValue(name PropertyName)
 		case 'SkillAdjustmentMinSkill': return string(SkillAdjustmentMinSkill);
 		case 'SkillAdjustmentMaxSkill': return string(SkillAdjustmentMaxSkill);
 
+		case 'EarlyInitialization': return OutputBool(EarlyInitialization);
+		case 'TryLoadingCharacterModels': return OutputBool(TryLoadingCharacterModels);
+
 		// UT3 override config
 
 		case 'bPlayersBalanceTeams': return OutputBool(bPlayersBalanceTeams);
@@ -415,6 +424,9 @@ function SetSpecialValue(name PropertyName, string NewValue)
 		case 'SkillAdjustmentIndividual': SkillAdjustmentIndividual = ParseBool(NewValue);break;
 		case 'SkillAdjustmentMinSkill': SkillAdjustmentMinSkill = ParseFloat(NewValue);break;
 		case 'SkillAdjustmentMaxSkill': SkillAdjustmentMaxSkill = ParseFloat(NewValue);break;
+
+		case 'EarlyInitialization': EarlyInitialization = ParseBool(NewValue);break;
+		case 'TryLoadingCharacterModels': TryLoadingCharacterModels = ParseBool(NewValue);break;
 	
 		// UT3 override config
 
@@ -527,6 +539,9 @@ DefaultProperties
 	Variables.Add("SkillAdjustmentMinSkill")
 	Variables.Add("SkillAdjustmentMaxSkill")
 
+	Variables.Add("EarlyInitialization")
+	Variables.Add("TryLoadingCharacterModels")
+
 	Variables.Add("bPlayersBalanceTeams")
 
 	DataFieldPrefix="BotBalancer_"
@@ -562,6 +577,8 @@ DefaultProperties
 	SkillAdjustmentMinSkill=0.0
 	SkillAdjustmentMaxSkill=-1
 
+	EarlyInitialization=true
+	TryLoadingCharacterModels=true
 
 	// --- UT3 override config ---
 	bPlayersBalanceTeams=true
