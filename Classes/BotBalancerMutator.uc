@@ -56,6 +56,7 @@ var BotBalancerGameRules ScoreHandler;
 var bool bPlayersBalanceTeams;
 var bool PlayersVsBots;
 var float BotRatio;
+var float TeamRatio;
 
 /** Team index. Always valid index to GRI.Teams. Never 255/unset */
 var byte PlayersSide;
@@ -244,6 +245,11 @@ function MatchStarting()
 		InOpt = class'GameInfo'.static.ParseOption(CacheGame.ServerOptions, "BotRatio");
 		BotRatio = float(InOpt);
 	}
+	if (class'GameInfo'.static.HasOption(CacheGame.ServerOptions, "TeamRatio"))
+	{
+		InOpt = class'GameInfo'.static.ParseOption(CacheGame.ServerOptions, "TeamRatio");
+		TeamRatio = float(InOpt);
+	}
 
 	// if another mutator changes bots, store original one and
 	// ensure we are using the NullBot for proper balancing
@@ -300,6 +306,8 @@ function NotifyLogin(Controller NewPlayer)
 
 function NotifyLogout(Controller Exiting)
 {
+	local UTBot B;
+
 	`Log(name$"::NotifyLogout - Exiting:"@Exiting,bShowDebug,'BotBalancer');
 	super.NotifyLogout(Exiting);
 
@@ -310,9 +318,11 @@ function NotifyLogout(Controller Exiting)
 		return;
 	}
 
-	BotsSpawnedOnce.RemoveItem(UTBot(Exiting));
+	B = UTBot(Exiting);
+	BotsSpawnedOnce.RemoveItem(B);
+	BotsWaitForRespawn.RemoveItem(B);
 
-	if (bMatchStarted && UTBot(Exiting) == none)
+	if (bMatchStarted && B == none)
 	{
 		BalanceBotsTeams();
 	}
@@ -534,6 +544,7 @@ function Mutate(string MutateString, PlayerController Sender)
 	local string str, value, value2;
 	local int i;
 	local UTBot bot;
+	local PlayerController PC;
 	local int Counts[2];
 
 	`Log(name$"::Mutate - MutateString:"@MutateString$" - Sender:"@Sender,bShowDebug,'BotBalancer');
@@ -541,6 +552,40 @@ function Mutate(string MutateString, PlayerController Sender)
 
 	if (Sender == none)
 		return;
+
+	str = "BB BotRatio"; // BB BotRatio Ratio
+	if (Left(MutateString, Len(str)) ~= str)
+	{
+		value = Mid(MutateString, Len(str)+1); // Ratio
+		if (Len(value) > 0)
+		{
+			BotRatio = float(value);
+			Sender.ClientMessage("BotRatio set to"@BotRatio);
+		}
+		else
+		{
+			Sender.ClientMessage("Missing ratio parameter");
+		}
+
+		return;
+	}
+
+	str = "BB TeamRatio"; // BB TeamRatio Ratio
+	if (Left(MutateString, Len(str)) ~= str)
+	{
+		value = Mid(MutateString, Len(str)+1); // Ratio
+		if (Len(value) > 0)
+		{
+			TeamRatio = float(value);
+			Sender.ClientMessage("TeamRatio set to"@TeamRatio);
+		}
+		else
+		{
+			Sender.ClientMessage("Missing ratio parameter");
+		}
+
+		return;
+	}
 
 	str = "BB SwitchBot"; // BB SwitchBot FromTeam ToTeam
 	if (Left(MutateString, Len(str)) ~= str)
@@ -562,6 +607,36 @@ function Mutate(string MutateString, PlayerController Sender)
 				else
 				{
 					Sender.ClientMessage("Unable to get random bot from team"@value);
+				}
+			}
+			else
+			{
+				Sender.ClientMessage("Invalid team indizes");
+			}
+		}
+		return;
+	}
+
+	str = "BB SwitchPlayer"; // BB SwitchPlayer PlayerName ToTeam
+	if (Left(MutateString, Len(str)) ~= str)
+	{
+		value = Mid(MutateString, Len(str)+1); // PlayerName ToTeam
+		i = InStr(value, " ");
+		if (i != INDEX_NONE)
+		{
+			value2 = Mid(value, i+1); // ToTeam
+			value = Left(value, i); // PlayerName
+
+			if (int(value) < WorldInfo.GRI.Teams.Length && int(value2) < WorldInfo.GRI.Teams.Length)
+			{
+				if (GetPlayerControllerByName(value, PC))
+				{
+					SwitchPlayer(PC, int(value2));
+					Sender.ClientMessage("PC"@PC.GetHumanReadableName()@"switched");
+				}
+				else
+				{
+					Sender.ClientMessage("Unable to find player by name:"@value);
 				}
 			}
 			else
@@ -601,7 +676,30 @@ function Mutate(string MutateString, PlayerController Sender)
 		return;
 	}
 
-	str = "BB ListPlayers"; // BB CountTeams
+	str = "BB SetTeams"; // BB SetTeams Count
+	if (Left(MutateString, Len(str)) ~= str)
+	{
+		value = Mid(MutateString, Len(str)+1); // Count
+		if (Len(value) > 0)
+		{
+			DesiredPlayerCount = int(value);
+			bForceDesiredPlayerCount = true;
+
+			KillBots();
+			AddBots(DesiredPlayerCount);
+
+			Sender.ClientMessage("Set desired player count to:"@DesiredPlayerCount);
+			TimerCheckPlayerCount();
+		}
+		else
+		{
+			Sender.ClientMessage("Missing count parameter");
+		}
+
+		return;
+	}
+
+	str = "BB ListPlayers"; // BB ListPlayers
 	if (Left(MutateString, Len(str)) ~= str)
 	{
 		value = "";
@@ -977,6 +1075,7 @@ function InitConfig()
 	bPlayersBalanceTeams = MyConfig.bPlayersBalanceTeams;
 	PlayersVsBots = MyConfig.PlayersVsBots;
 	BotRatio = MyConfig.BotRatio;
+	TeamRatio = MyConfig.TeamRatio;
 
 	// if GRI was already initialized, set PlayersSide again
 	if (bGRIInitialized) SetPlayersSide();
@@ -1176,6 +1275,15 @@ function AddBots(int InDesiredPlayerCount)
 	}
 }
 
+function KillBots()
+{
+	local UTBot B;
+	foreach WorldInfo.AllControllers(class'UTBot', B)
+	{
+		CacheGame.KillBot(B);
+	}
+}
+
 function ResetBotOrders(array<UTBot> bots)
 {
 	local UTBot bot;
@@ -1272,6 +1380,24 @@ function SwitchBot(UTBot bot, int TeamNum)
 }
 
 `if(`notdefined(FINAL_RELEASE))
+
+function SwitchPlayer(PlayerController PC, int TeamNum)
+{
+	local TeamInfo OldTeam;
+
+	if (CacheTeamGame == none)
+		return;
+
+	OldTeam = PC.PlayerReplicationInfo.Team;
+	if (CacheGame.ChangeTeam(PC, TeamNum, true) && CacheGame.bTeamGame && PC.PlayerReplicationInfo.Team != OldTeam)
+	{
+		if (PC.Pawn != None)
+		{
+			PC.Pawn.PlayerChangedTeam();
+		}
+	}
+}
+
 function bool GoToSpectator( PlayerController PC )
 {
 	local UTGame G;
@@ -1322,6 +1448,26 @@ function bool GoToSpectator( PlayerController PC )
 
 	return false;
 }
+
+function bool GetPlayerControllerByName(string PlayerName, out PlayerController PC)
+{
+	local int i;
+
+	for (i=0; i < WorldInfo.GRI.PRIArray.Length; i++)
+	{
+		if (WorldInfo.GRI.PRIArray[i].GetPlayerAlias() ~= PlayerName)
+		{
+			if (PlayerController(WorldInfo.GRI.PRIArray[i].Owner) != none)
+			{
+				PC = PlayerController(WorldInfo.GRI.PRIArray[i].Owner);
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 `endif
 
 function bool GetRandomPlayerByTeam(TeamInfo team, out UTBot OutBot)
@@ -1351,6 +1497,7 @@ function bool GetRandomPlayerByTeam(TeamInfo team, out UTBot OutBot)
 function bool GetAdjustedTeamPlayerCount(out array<int> PlayersCount, out array<float> TeamsCount)
 {
 	local int i, index, count;
+	local float multiplier;
 
 	// init team count array
 	PlayersCount.Length = 0; // clear
@@ -1383,6 +1530,13 @@ function bool GetAdjustedTeamPlayerCount(out array<int> PlayersCount, out array<
 
 		// use botratio to know how many proper player a team would have
 		TeamsCount[i] = float(PlayersCount[i])*BotRatio + float(count);
+	}
+
+	// use teamratio to adjust team player count based on desired ratio
+	for ( i=0; i<TeamsCount.Length; i++)
+	{
+		multiplier = PlayersCount[i] > 0 ? TeamRatio : 1.0;
+		TeamsCount[i] *= multiplier;
 	}
 
 	return true;

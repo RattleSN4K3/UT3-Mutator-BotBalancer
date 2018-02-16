@@ -16,6 +16,7 @@ class BotBalancerConfig extends Object
 //**********************************************************************************
 
 var() config float BotRatio;
+var() config float TeamRatio;
 
 var() config bool UseLevelRecommendation;
 var() config float LevelRecommendationMultiplier;
@@ -240,6 +241,7 @@ final function Init()
 final function Validate()
 {
 	if (BotRatio <= 0.0) BotRatio = 2.0;
+	if (TeamRatio <= 0.0) TeamRatio = 3.0;
 
 	if (LevelRecommendationMultiplier < 0)
 		LevelRecommendationMultiplier = Abs(LevelRecommendationMultiplier);
@@ -263,6 +265,7 @@ function ResetConfig()
 	`Log(name$"::ResetConfig",bShowDebug,'BotBalancer');
 
 	BotRatio=2.0;
+	TeamRatio=3.0;
 
 	UseLevelRecommendation=false;
 	LevelRecommendationMultiplier=1.0;
@@ -340,6 +343,7 @@ function string GetSpecialValue(name PropertyName)
 		// Config
 
 		case 'BotRatio': return string(BotRatio);
+		case 'TeamRatio': return string(TeamRatio);
 		
 		case 'UseLevelRecommendation': return OutputBool(UseLevelRecommendation);
 		case 'LevelRecommendationMultiplier': return string(LevelRecommendationMultiplier);
@@ -385,6 +389,7 @@ function SetSpecialValue(name PropertyName, string NewValue)
 		// Config
 
 		case 'BotRatio': BotRatio = ParseFloat(NewValue);break;
+		case 'TeamRatio': TeamRatio = ParseFloat(NewValue);break;
 		
 		case 'UseLevelRecommendation': UseLevelRecommendation = ParseBool(NewValue);break;
 		case 'LevelRecommendationMultiplier': LevelRecommendationMultiplier = ParseFloat(NewValue);break;
@@ -495,6 +500,7 @@ static function bool IsConsole()
 DefaultProperties
 {
 	Variables.Add("BotRatio")
+	Variables.Add("TeamRatio")
 	
 	Variables.Add("UseLevelRecommendation")
 	Variables.Add("LevelRecommendationMultiplier")
@@ -528,6 +534,7 @@ DefaultProperties
 	// ---=== Config ===---
 
 	BotRatio=2.0
+	TeamRatio=3.0
 
 	UseLevelRecommendation=false
 	LevelRecommendationMultiplier=1.0
