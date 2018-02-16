@@ -1,4 +1,4 @@
-// Class created with the Owner as a UIDynamicFieldProvider wich gets access to protected members
+// Class created with the Owner as a UIDynamicFieldProvider which gets access to protected members
 
 class BotBalancerPersistentConfigHelper extends Object
 	within UIDynamicFieldProvider;

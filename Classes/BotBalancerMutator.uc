@@ -54,6 +54,9 @@ var private array<UTBot> BotsSpawnedOnce;
 
 var BotBalancerGameRules ScoreHandler;
 
+/** Set if custom bot class has been replaced */
+var bool bCustomBotClassReplaced;
+
 // ---=== Override config ===---
 
 var bool bPlayersBalanceTeams;
@@ -63,9 +66,6 @@ var float TeamRatio;
 
 /** Team index. Always valid index to GRI.Teams. Never 255/unset */
 var byte PlayersSide;
-
-/** Set if custom bot class has been replaced */
-var bool bCustomBotClassReplaced;
 
 //**********************************************************************************
 // Variables
@@ -84,7 +84,7 @@ auto state InitGRI
 	{
 		// GRI related initialization
 		SetGRI(WorldInfo.GRI);
-		
+
 		global.NotifyLogin(NewPlayer);
 	}
 	
@@ -101,9 +101,7 @@ auto state InitGRI
 // Inherited functions
 //**********************************************************************************
 
-//
 // Called immediately before gameplay begins.
-//
 event PreBeginPlay()
 {
 	`Log(name$"::PreBeginPlay",bShowDebug,'BotBalancer');
@@ -142,7 +140,7 @@ event PostBeginPlay()
 event Destroyed()
 {
 	`Log(name$"::Destroyed",bShowDebug,'BotBalancer');
-	
+
 	if (ScoreHandler != none)
 	{
 		ScoreHandler.Destroy();
@@ -184,7 +182,7 @@ function SetGRI(GameReplicationInfo GRI)
 	if (GRI == none || bGRIInitialized)
 		return;
 
-	`Log(name$"::SetGRI - Init GRi-related variables once:"@GRI,bShowDebug,'BotBalancer');
+	`Log(name$"::SetGRI - Init GRI-related variables once:"@GRI,bShowDebug,'BotBalancer');
 
 	if (MyConfig != none)
 	{
@@ -811,7 +809,7 @@ function NotifyScoreObjective(PlayerReplicationInfo Scorer, Int Score)
 function NotifyScoreKill(Controller Killer, Controller Killed)
 {
 	`Log(self$"::NotifyScoreKill - Killer:"@Killer$" - Killed:"@Killed,bShowDebug,'BotBalancer');
- 
+
 	if (MyConfig.AdjustBotSkill && CacheTeamGame != none)
 	{
 		switch (MyConfig.SkillAdjustment)
@@ -838,7 +836,6 @@ function NotifyScoreKill(Controller Killer, Controller Killed)
 			}
 			break;
 		}
-		
 	}
 }
 
@@ -1091,6 +1088,20 @@ function InitConfig()
 	if (bGRIInitialized) SetPlayersSide();
 }
 
+function CreateGameRules()
+{
+	ScoreHandler = Spawn(class'BotBalancerGameRules');
+	if (ScoreHandler != none)
+	{
+		if ( WorldInfo.Game.GameRulesModifiers == None )
+			WorldInfo.Game.GameRulesModifiers = ScoreHandler;
+		else
+			WorldInfo.Game.GameRulesModifiers.AddGameRules(ScoreHandler);
+
+		ScoreHandler.Callback = self;
+	}
+}
+
 function EarlyInitialize()
 {
 	if (MyConfig.EarlyInitialization && !bEarlyInitialized)
@@ -1134,20 +1145,6 @@ function LoadCharacter(Controller NewPlayer)
 		//GRI.ProcessCharacterData(UTPRI);
 
 		GRI.bAlwaysLoadCustomCharacters = false;
-	}
-}
-
-function CreateGameRules()
-{
-	ScoreHandler = Spawn(class'BotBalancerGameRules');
-	if (ScoreHandler != none)
-	{
-		if ( WorldInfo.Game.GameRulesModifiers == None )
-			WorldInfo.Game.GameRulesModifiers = ScoreHandler;
-		else
-			WorldInfo.Game.GameRulesModifiers.AddGameRules(ScoreHandler);
-
-		ScoreHandler.Callback = self;
 	}
 }
 
@@ -1264,7 +1261,7 @@ function int GetNextTeamIndex(bool bBot)
 		{
 			bSwap = CacheTeamGame.bForceAllRed;
 			CacheTeamGame.bForceAllRed = false;
-		
+
 			// find the proper team index for the player
 			if (bBot) BotTeam = CacheGame.GetBotTeam();
 			if (BotTeam != none) TeamIndex = BotTeam.TeamIndex;
@@ -1314,7 +1311,7 @@ function AddBots(int InDesiredPlayerCount)
 
 		if (MyConfig.TryLoadingCharacterModels)
 			LoadCharacter(bot);
-		
+
 		tempbots.AddItem(bot);
 		if (BotsSpawnedOnce.Find(bot) == INDEX_NONE)
 		{
