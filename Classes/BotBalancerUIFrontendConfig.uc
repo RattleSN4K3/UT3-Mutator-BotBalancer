@@ -16,6 +16,23 @@ struct SUIIdStringCollectionInfo
 	var array<string> Names;
 };
 
+struct UIGroupInfo
+{
+	var int GroupID;
+
+	var string GroupTitle;
+	var string GroupDescription;
+	var string GroupTooltip;
+
+	var int IndexStart;
+	var int IndexEnd;
+
+	structdefaultproperties
+	{
+		IndexEnd=-1
+	}
+};
+
 //**********************************************************************************
 // Variables
 //**********************************************************************************
@@ -228,8 +245,8 @@ function SetupMenuOptions()
 
 	local Settings setts;
 	local int p, index;
-	local string str, strtitle;
-	local array<string> groups, ranges;
+	local string str;
+	local array<UIGroupInfo> groups;
 
 	`Log(name$"::SetupMenuOptions",,'BotBalancer');
 
@@ -241,9 +258,22 @@ function SetupMenuOptions()
 
 	setts = new SettingsClass;
 	
-	// sort by ID
-	SortedMappings = SortPropertyMappings(setts.PropertyMappings);
+	// retrieve groups from settings class
+	str = setts.GetSpecialValue(SettingsCommandGroups);
+	groups = ParseUIGroups(str);
 
+	if (groups.Length > 0)
+	{
+		// sort by group and ID
+		SortedMappings = SortPropertyMappingsByGroup(groups, setts.PropertyMappings);
+	}
+	else
+	{
+		// sort by ID
+		SortedMappings = SortPropertyMappings(setts.PropertyMappings);
+	}
+
+	// create option templates from mappings
 	for (i=0; i<SortedMappings.Length; i++) 
 	{
 		n = SortedMappings[i].Name;
@@ -260,28 +290,22 @@ function SetupMenuOptions()
 		}
 	}
 
-	// insert separator captions
-	str = setts.GetSpecialValue(SettingsCommandGroups);
-	ParseStringIntoArray(str, groups, ";", true);
+	// insert separator captions (expecting menu options are sorted based on groups or mappings)
 	for (i=0; i<groups.Length; i++) 
 	{
-		index = InStr(groups[i], "=");
-		if (index == INDEX_NONE) continue;
+		if (Len(groups[i].GroupTitle) < 1) continue;
+		index = groups[i].IndexStart;
+		if (index < 0) continue;
 
-		strtitle = Left(groups[i], index);
-		str = Mid(groups[i], index+1);
-		ParseStringIntoArray(str, ranges, ",", false);
-
-		index = int(ranges[0]);
 		p = SortedMappings.Find('Id', index);
 		if (p != INDEX_NONE)
 		{
 			CurMenuOpt = EmptyMenuOpt;
 			CurMenuOpt.OptionName = name("Separator"$i);
 			CurMenuOpt.OptionType = UTOT_EditBox;
-			CurMenuOpt.FriendlyName = strtitle;
+			CurMenuOpt.FriendlyName = groups[i].GroupTitle;
 			//CurMenuOpt.bKeyboardOrMouseOption = true;
-			CurMenuOpt.Description = "";
+			CurMenuOpt.Description = groups[i].GroupDescription;
 
 			index = OptionsList.DynamicOptionTemplates.Find('OptionName', SortedMappings[p].Name);
 			if (index != INDEX_NONE)
@@ -1117,6 +1141,77 @@ static function array<SettingsPropertyPropertyMetaData> SortPropertyMappings(arr
 	}
 
 	return sorted;
+}
+
+static function array<SettingsPropertyPropertyMetaData> SortPropertyMappingsByGroup(array<UIGroupInfo> groups, array<SettingsPropertyPropertyMetaData> mappings)
+{
+	local array<SettingsPropertyPropertyMetaData> sorted;
+	local array<SettingsPropertyPropertyMetaData> result;
+	local int i, n;
+
+	sorted = SortPropertyMappings(mappings);
+	for (i=0; i<groups.Length; i++)
+	{
+		for (n=0; n<sorted.Length; n++)
+		{
+			if (sorted[n].Id >= groups[i].IndexStart && (groups[i].IndexEnd < 0 || sorted[n].Id <= groups[i].IndexEnd))
+			{
+				result.AddItem(sorted[n]);
+
+				sorted.Remove(n, 1);
+				n--;
+			}
+			else if (groups[i].IndexEnd >= 0 && sorted[n].Id > groups[i].IndexEnd)
+			{
+				// skip to next group
+				break;
+			}
+		}
+	}
+
+	// insert all property with a group mapping to the top
+	for (i=sorted.Length-1; i>=0; i--)
+	{
+		result.InsertItem(0, sorted[i]);
+	}
+
+	return result;
+}
+
+static function array<UIGroupInfo> ParseUIGroups(string groupstring)
+{
+	local int i, index;
+	local string str, strtitle;
+	local array<string> groups, ranges;
+
+	local array<UIGroupInfo> infos;
+
+	ParseStringIntoArray(groupstring, groups, ";", true);
+	for (i=0; i<groups.Length; i++) 
+	{
+		index = InStr(groups[i], "=");
+		if (index == INDEX_NONE) continue;
+
+		strtitle = Left(groups[i], index);
+		str = Mid(groups[i], index+1);
+		ParseStringIntoArray(str, ranges, ",", false);
+
+		if (ranges.Length > 0 && Len(ranges[0]) > 0)
+		{
+			index = infos.Length;
+			infos.Add(1);
+
+			infos[index].GroupTitle = strtitle;
+			infos[index].GroupID = 0;
+			infos[index].IndexStart = int(ranges[0]);
+			if (ranges.Length > 1 && Len(ranges[1]) > 0)
+			{
+				infos[index].IndexEnd = int(ranges[1]);
+			}
+		}
+	}
+
+	return infos;
 }
 
 //**********************************************************************************
