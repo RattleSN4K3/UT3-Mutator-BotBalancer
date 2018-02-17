@@ -22,7 +22,7 @@ var() config bool UseLevelRecommendation;
 var() config float LevelRecommendationMultiplier;
 var() config int LevelRecommendationOffsetPost;
 
-/** Whether to use RecommendedPlayersMap, other use stored in-level MapInfo is used */
+/** Whether to use RecommendedPlayersMap, otherwise the stored in-level MapInfo is used */
 var() config bool PreferUIMapInfo;
 var() config bool UseUIMapInfoGametypeMultiplier;
 var() config bool UseGlobalGametypeMultiplier;
@@ -257,9 +257,16 @@ final function Validate()
 	SkillAdjustmentFactor = FClamp(SkillAdjustmentFactor, 0.0, 7.0);
 	if (SkillAdjustmentThreshold < 0)
 		SkillAdjustmentThreshold = 1;
+	if (SkillAdjustmentDisparity > 0.0)
+		SkillAdjustmentDisparity = FMin(SkillAdjustmentDisparity, 7.0);
 
 	if (SkillAdjustmentCampaignReduce < 0) SkillAdjustmentCampaignReduce = 0.5;
+	else SkillAdjustmentCampaignReduce = FMin(SkillAdjustmentCampaignReduce, 7.0);
 	if (SkillAdjustmentCampaignIncrease < 0) SkillAdjustmentCampaignIncrease = 0.75;
+	else SkillAdjustmentCampaignIncrease = FMin(SkillAdjustmentCampaignIncrease, 7.0);
+
+	if (SkillAdjustmentMinSkill >= 0.0) SkillAdjustmentMinSkill = FMin(SkillAdjustmentMinSkill, 7.0);
+	if (SkillAdjustmentMaxSkill > 0.0) SkillAdjustmentMaxSkill = FMin(SkillAdjustmentMaxSkill, 7.0);
 }
 
 // Somehow the archetype values are changed. We need to reset the value hardcoded

@@ -12,6 +12,9 @@ Groups[0]=(Name="General")
 Groups[1]=(Name="Level recommendation")
 Groups[2]=(Name="Players vs. Bots")
 Groups[3]=(Name="UT3 stock settings")
+Groups[4]=(Name="Advanced")
+Groups[5]=(Name="Skill adjustment")
+Groups[6]=(Name="Skill adjustment - Adjustable")
 ;
 PropertyMappings[0]=(ColumnHeaderText="Bot/Player Ratio")
 PropertyMappings[1]=(ColumnHeaderText="Use Level Recommendation",ValueMappings=((Name="no "),(Name="yes ")))
@@ -21,6 +24,24 @@ PropertyMappings[4]=(ColumnHeaderText="Players vs. Bots",ValueMappings=((Name="n
 PropertyMappings[5]=(ColumnHeaderText="Player side (for Player vs. Bots)",ValueMappings=((Name="Random"),(Name="Red"),(Name="Blue"),(Name="Green"),(Name="Gold"),(Name="Unset")))
 PropertyMappings[6]=(ColumnHeaderText="Allow Team Change (in Player vs. Bots)",ValueMappings=((Name="no "),(Name="yes ")))
 PropertyMappings[7]=(ColumnHeaderText="Players Balance Teams",ValueMappings=((Name="no "),(Name="yes ")))
+PropertyMappings[8]=(ColumnHeaderText="Team Ratio")
+PropertyMappings[9]=(ColumnHeaderText="Prefer UI MapInfo",ValueMappings=((Name="no "),(Name="yes ")))
+PropertyMappings[10]=(ColumnHeaderText="Use Maps' Gametype Multiplier",ValueMappings=((Name="no "),(Name="yes ")))
+PropertyMappings[11]=(ColumnHeaderText="Use Global Gametype Multiplier",ValueMappings=((Name="no "),(Name="yes ")))
+PropertyMappings[12]=(ColumnHeaderText="Support Deathmatch",ValueMappings=((Name="no "),(Name="yes ")))
+PropertyMappings[13]=(ColumnHeaderText="Early Initialization",ValueMappings=((Name="no "),(Name="yes ")))
+PropertyMappings[14]=(ColumnHeaderText="Try Loading Character Models",ValueMappings=((Name="no "),(Name="yes ")))
+PropertyMappings[15]=(ColumnHeaderText="Adjust Bot Skill",ValueMappings=((Name="no "),(Name="yes ")))
+PropertyMappings[16]=(ColumnHeaderText="Skill Adjustment",ValueMappings=((Name="Original "),(Name="Adjustable ")))
+PropertyMappings[17]=(ColumnHeaderText="Skill Adjustment Factor")
+PropertyMappings[18]=(ColumnHeaderText="Skill Adjustment Threshold")
+PropertyMappings[19]=(ColumnHeaderText="Skill Adjustment Disparity")
+PropertyMappings[20]=(ColumnHeaderText="Skill Adjustment like Campaign mode",ValueMappings=((Name="no "),(Name="yes ")))
+PropertyMappings[21]=(ColumnHeaderText="Skill Adjustment Campaign-Decrease")
+PropertyMappings[22]=(ColumnHeaderText="Skill Adjustment Campaign-Increase")
+PropertyMappings[23]=(ColumnHeaderText="Skill Adjustment Individual",ValueMappings=((Name="Game's difficulty "),(Name="Bot skill ")))
+PropertyMappings[24]=(ColumnHeaderText="Skill Adjustment Skill (min)")
+PropertyMappings[25]=(ColumnHeaderText="Skill Adjustment Skill (max)")
 ;
 PropertyDescriptions[0]="The number of bots to balance for each player in the opponent team. Basically this values represents how much player a human player results. A value of 2.0 would mean that a human player is as strong as 2 bots."
 PropertyDescriptions[1]="Whether to use the level recommended player count for each map. Once  this is set, the player count will be adjusted to what ever the map has defined as min and max player count. A mean value will be used as bot player count."
@@ -29,7 +50,25 @@ PropertyDescriptions[3]="A value which will be added or substracted to/from the 
 PropertyDescriptions[4]="Whether to play a match with bots on one side (or multi sides with Multi-Team support) and humans players all in one team."
 PropertyDescriptions[5]="The player side in which all the human players will be put in when they connected. They can still change to the other side unless 'Allow Team Change' not allowed."
 PropertyDescriptions[6]="Whether to allow team changes for human player in Players vs. Bots mode. When this value is set, the any human player will be forced to play on the human side."
-PropertyDescriptions[7]="Joining players will join the team with the least players."
+PropertyDescriptions[7]="Whether joining players will join the team with the least players."
+PropertyDescriptions[8]="The ratio of human players teams versus bot team. A value of 2.0 would mean that a bot player team will get twice as players as the human player team."
+PropertyDescriptions[9]="Whether to prefer the stored RecommendedPlayersMap (provided by the game's localization), otherwise the map's author recommended player count is used."
+PropertyDescriptions[10]="Whether to use GameType multipliers stored for each map info in RecommendedPlayersMap which increase the recommended player count based on RecommendedPlayersGametypeMultipliers."
+PropertyDescriptions[11]="Whether to use global GameType multipliers which increase the recommended player count based on RecommendedPlayersGametypeMultipliers."
+PropertyDescriptions[12]="Whether to support bot balanced in Deathmatch games. This will generally support adjusting the skill level of bots dynamically."
+PropertyDescriptions[13]="Whether to early initialize the mutator and the amount of bots. If you face problems with default character models, set this option in order to initialize character models early in the game (additionally set 'Try Loading Character Models')"
+PropertyDescriptions[14]="Whether to try loading character models for bots joining the game within the match (when the map/game is already fully loaded). If you fac problems with default character models, enable this option."
+PropertyDescriptions[15]="Whether to adjust the bot skill dynamically and adapt to the skill of the player based on the score difference."
+PropertyDescriptions[16]="The type of skill adjustment. 'Original' is the same as the campaign mode, 'Adjustable' is simlar to that but configurable with the options provided here."
+PropertyDescriptions[17]="The skill value to adjust the bot skill level."
+PropertyDescriptions[18]="The amount of kills/score the difference of both players (bot and human player) has to have in order to adjust the skill level."
+PropertyDescriptions[19]="The maximum difference of the bot skill from the game's difficulty level (in both directions)."
+PropertyDescriptions[20]="Whether to adjust specific players (like Akasha or Loque) based on set conditions."
+PropertyDescriptions[21]="The skill value to adjust for the campaign-like adjustement if the skill has to be reduced."
+PropertyDescriptions[22]="The skill value to adjust for the campaign-like adjustement if the skill has to be increased."
+PropertyDescriptions[23]="Whether to adjust the bot skill individually per player and not increase the overall game's difficulty."
+PropertyDescriptions[24]="The minimum skill level the skill adjustment should have afterall."
+PropertyDescriptions[25]="The maximum skill level the skill adjustment should have afterall."
 
 [BotBalancerMutatorSettings Tooltips]
 BotRatio="The number of bots to balance for each player in the opponent team. Basically this values represents how much player a human player results. A value of 2.0 would mean that a human player is as strong as 2 bots."
@@ -39,5 +78,23 @@ LevelRecommendationOffsetPost="A value which will be added or substracted to/fro
 PlayersVsBots="Whether to play a match with bots on one side (or multi sides with Multi-Team support) and humans players all in one team."
 PlayersSide="The player side in which all the human players will be put in when they connected. They can still change to the other side unless 'Allow Team Change' not allowed."
 AllowTeamChangeVsBots="Whether to allow team changes for human player in Players vs. Bots mode. When this value is set, the any human player will be forced to play on the human side."
-bPlayersBalanceTeams="Joining players will join the team with the least players."
+bPlayersBalanceTeams="Whether joining players will join the team with the least players."
+TeamRatio="The ratio of human players teams versus bot team. A value of 2.0 would mean that a bot player team will get twice as players as the human player team."
+PreferUIMapInfo="Whether to prefer the stored RecommendedPlayersMap (provided by the game's localization), otherwise the map's author recommended player count is used."
+UseUIMapInfoGametypeMultiplier="Whether to use GameType multipliers stored for each map info in RecommendedPlayersMap which increase the recommended player count based on RecommendedPlayersGametypeMultipliers."
+UseGlobalGametypeMultiplier="Whether to use global GameType multipliers which increase the recommended player count based on RecommendedPlayersGametypeMultipliers."
+SupportDeathmatch="Whether to support bot balanced in Deathmatch games. This will generally support adjusting the skill level of bots dynamically."
+EarlyInitialization="Whether to early initialize the mutator and the amount of bots. If you face problems with default character models, set this option in order to initialize character models early in the game (additionally set 'Try Loading Character Models')"
+TryLoadingCharacterModels="Whether to try loading character models for bots joining the game within the match (when the map/game is already fully loaded). If you fac problems with default character models, enable this option."
+AdjustBotSkill="Whether to adjust the bot skill dynamically and adapt to the skill of the player based on the score difference."
+SkillAdjustment="The type of skill adjustment. 'Original' is the same as the campaign mode, 'Adjustable' is simlar to that but configurable with the options provided here."
+SkillAdjustmentFactor="The skill value to adjust the bot skill level."
+SkillAdjustmentThreshold="The amount of kills/score the difference of both players (bot and human player) has to have in order to adjust the skill level."
+SkillAdjustmentDisparity="The maximum difference of the bot skill from the game's difficulty level (in both directions)."
+SkillAdjustmentLikeCampaign="Whether to adjust specific players (like Akasha or Loque) based on set conditions."
+SkillAdjustmentCampaignReduce="The skill value to adjust for the campaign-like adjustement if the skill has to be reduced."
+SkillAdjustmentCampaignIncrease="The skill value to adjust for the campaign-like adjustement if the skill has to be increased."
+SkillAdjustmentIndividual="Whether to adjust the bot skill individually per player and not increase the overall game's difficulty."
+SkillAdjustmentMinSkill="The minimum skill level the skill adjustment should have afterall."
+SkillAdjustmentMaxSkill="The maximum skill level the skill adjustment should have afterall."
 
