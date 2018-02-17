@@ -37,6 +37,11 @@ var() transient class<UTUIDataStore_2DStringList> StringDatastoreClass;
 var transient array<name> RegisteredDatafields;
 var() transient string DataFieldPrefix;
 
+var() transient name SettingsCommandInit;
+var() transient name SettingsCommandSave;
+var() transient string SettingsCommandReset;
+var() transient name SettingsCommandGroups;
+
 var() transient class<Settings> SettingsClass;
 var() transient class<Object> ConfigClass;
 
@@ -256,7 +261,7 @@ function SetupMenuOptions()
 	}
 
 	// insert separator captions
-	str = setts.GetSpecialValue('WebAdmin_groups');
+	str = setts.GetSpecialValue(SettingsCommandGroups);
 	ParseStringIntoArray(str, groups, ";", true);
 	for (i=0; i<groups.Length; i++) 
 	{
@@ -310,7 +315,7 @@ function SetupOptionBindings()
 	`Log(name$"::SetupOptionBindings",,'BotBalancer');
 
 	SettingsObj = new SettingsClass;
-	SettingsObj.SetSpecialValue('WebAdmin_Init', "");
+	SettingsObj.SetSpecialValue(SettingsCommandInit, "");
 
 	// Generate list collections
 	for (i=0; i<OptionsList.GeneratedObjects.Length; i++)
@@ -663,7 +668,7 @@ function OnAccept()
 	`Log(name$"::OnAccept",,'BotBalancer');
 
 	SettingsObj = new SettingsClass;
-	SettingsObj.SetSpecialValue('WebAdmin_Init', "");
+	SettingsObj.SetSpecialValue(SettingsCommandInit, "");
 	for (i=0; i<SettingsObj.PropertyMappings.Length; i++) 
 	{
 		n = SettingsObj.PropertyMappings[i].Name;
@@ -680,7 +685,7 @@ function OnAccept()
 	}
 
 	`Log(name$"::OnAccept - Save config",,'BotBalancer');
-	SettingsObj.SetSpecialValue('WebAdmin_Save', "");
+	SettingsObj.SetSpecialValue(SettingsCommandSave, "");
 
 	// show additional toast message for consoles
 	if (class'UIRoot'.static.IsConsole())
@@ -893,7 +898,7 @@ function ResetToDefaults()
 {
 	`Log(name$"::ResetToDefaults",,'BotBalancer');
 
-	ConfigClass.static.Localize("WebAdmin_ResetToDefaults", "", "");
+	ConfigClass.static.Localize(SettingsCommandReset, "", "");
 
 	// show additional toast message for consoles
 	if (class'UIRoot'.static.IsConsole())
@@ -1150,6 +1155,11 @@ defaultproperties
 
 	SettingsClass=class'BotBalancerMutatorSettings'
 	ConfigClass=class'BotBalancerConfig'
+
+	SettingsCommandInit="WebAdmin_Init"
+	SettingsCommandSave="WebAdmin_Save"
+	SettingsCommandReset="WebAdmin_ResetToDefaults"
+	SettingsCommandGroups="WebAdmin_groups"
 
 	StringDatastoreClass=class'UTUIDataStore_2DStringList'
 	DataFieldPrefix="BotBalancer_"
