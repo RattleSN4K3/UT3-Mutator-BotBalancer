@@ -1,3 +1,19 @@
+Release 1.0
+- Fixed: Use float values to compare score values
+- Added: Balance/adjust bot skill after kills/deaths from bots
+- Added: Configurable skill adjustment (instead of original campaign-like mechanism)
+- Added: Individually adjust bot skill per player (not per team/game)
+- Added: Support for Deathmatch (auto-bot-adding, bot skill adjustment, etc.)
+- Added: Retrieve recommended player count from localized MapInfo (stored in mutator)
+- Added: Multiply/adjust recommended player count based on gametype
+- Added: Prioritizing gametype info for level recommended player count found based on exact name
+- Added: Gametype multiplier for adjusting recommended player count based on gametypes
+- Added: Custom balance algorithm for TeamRatio
+- Added: Early initialize teams (desired player) to fix character models loading
+- Added: Options to several new config options through config menu
+- Changed: Proper algorithm finding the best team for a newly joining player/bot
+- Changed: Use TeamIndex for random team when finding the team to add a new player to
+
 Alpha 4
 - Fixed: Config uses per-object config
 - Fixed: Restoring config in UI doesn't work
@@ -24,7 +40,7 @@ Alpha 2
 - Added: Options like VsBots, BotRatio, BalanceTeams are parsed
 
 Alpha 1 - Initial release
-- Basic mutator 
+- Basic mutator
 - Allow uneven bot teams in online games
 - Use level recommended player count for bots
 - Players vs. bots mode
