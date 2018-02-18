@@ -157,11 +157,11 @@ DefaultProperties
 
 	Properties(2)=(PropertyID=21,Data=(Type=SDT_Float))
 	PropertyMappings(2)=(ID=21,Name="LevelRecommendationMultiplier",ColumnHeaderText="Recommended player multiplier",MappingType=PVMT_Ranged,MinVal=0.1,MaxVal=8.0,RangeIncrement=0.1)
-	PropertyDescriptions(2)="A factor which will be used to multiply the recommended player count for the value. Using a mulitplier of 2.0 would double up the player count where 0.5 would reduce the player count by half."
+	PropertyDescriptions(2)="A factor which will be used to multiply the recommended player count for the value. Using a multiplier of 2.0 would double up the player count where 0.5 would reduce the player count by half."
 
 	Properties(3)=(PropertyID=22,Data=(Type=SDT_Int32))
 	PropertyMappings(3)=(ID=22,Name="LevelRecommendationOffsetPost",ColumnHeaderText="Recommended player adjustment",MappingType=PVMT_Ranged,MinVal=-31,MaxVal=31,RangeIncrement=1)
-	PropertyDescriptions(3)="A value which will be added or substracted to/from the (multiplied) recommended player count for each level. This can be used to adjust the count by an absolute number like adding additional 2 bots."
+	PropertyDescriptions(3)="A value which will be added or subtracted to/from the (multiplied) recommended player count for each level. This can be used to adjust the count by an absolute number like adding additional 2 bots."
 
 	Properties(4)=(PropertyID=30,Data=(Type=SDT_Int32))
 	PropertyMappings(4)=(ID=30,Name="PlayersVsBots",ColumnHeaderText="Players vs. Bots",MappingType=PVMT_IDMapped,ValueMappings=((ID=0,Name="no "),(ID=1,Name="yes ")))
@@ -207,7 +207,7 @@ DefaultProperties
 
 	Properties(14)=(PropertyID=102,Data=(Type=SDT_Int32))
 	PropertyMappings(14)=(ID=102,Name="TryLoadingCharacterModels",ColumnHeaderText="Try Loading Character Models",MappingType=PVMT_IDMapped,ValueMappings=((ID=0,Name="no "),(ID=1,Name="yes ")))
-	PropertyDescriptions(14)="Whether to try loading character models for bots joining the game within the match (when the map/game is already fully loaded). If you fac problems with default character models, enable this option."
+	PropertyDescriptions(14)="Whether to try loading character models for bots joining the game within the match (when the map/game is already fully loaded). If you face problems with default character models, enable this option."
 
 	Properties(15)=(PropertyID=70,Data=(Type=SDT_Int32))
 	PropertyMappings(15)=(ID=70,Name="AdjustBotSkill",ColumnHeaderText="Adjust Bot Skill",MappingType=PVMT_IDMapped,ValueMappings=((ID=0,Name="no "),(ID=1,Name="yes ")))
@@ -215,7 +215,7 @@ DefaultProperties
 
 	Properties(16)=(PropertyID=71,Data=(Type=SDT_Int64))
 	PropertyMappings(16)=(ID=71,Name="SkillAdjustment",ColumnHeaderText="Skill Adjustment",MappingType=PVMT_IDMapped,ValueMappings=((ID=0,Name="Original "),(ID=1,Name="Adjustable ")))
-	PropertyDescriptions(16)="The type of skill adjustment. 'Original' is the same as the campaign mode, 'Adjustable' is simlar to that but configurable with the options provided here."
+	PropertyDescriptions(16)="The type of skill adjustment. 'Original' is the same as the campaign mode, 'Adjustable' is similar to that but configurable with the options provided here."
 
 	Properties(17)=(PropertyID=72,Data=(Type=SDT_Float))
 	PropertyMappings(17)=(ID=72,Name="SkillAdjustmentFactor",ColumnHeaderText="Skill Adjustment Factor",MappingType=PVMT_Ranged,MinVal=0.0,MaxVal=7.0,RangeIncrement=0.2)
@@ -235,11 +235,11 @@ DefaultProperties
 
 	Properties(21)=(PropertyID=76,Data=(Type=SDT_Float))
 	PropertyMappings(21)=(ID=76,Name="SkillAdjustmentCampaignReduce",ColumnHeaderText="Skill Adjustment Campaign-Decrease",MappingType=PVMT_Ranged,MinVal=0.0,MaxVal=7.0,RangeIncrement=0.25)
-	PropertyDescriptions(21)="The skill value to adjust for the campaign-like adjustement if the skill has to be reduced."
+	PropertyDescriptions(21)="The skill value to adjust for the campaign-like adjustment if the skill has to be reduced."
 
 	Properties(22)=(PropertyID=77,Data=(Type=SDT_Float))
 	PropertyMappings(22)=(ID=77,Name="SkillAdjustmentCampaignIncrease",ColumnHeaderText="Skill Adjustment Campaign-Increase",MappingType=PVMT_Ranged,MinVal=0.0,MaxVal=7.0,RangeIncrement=0.25)
-	PropertyDescriptions(22)="The skill value to adjust for the campaign-like adjustement if the skill has to be increased."
+	PropertyDescriptions(22)="The skill value to adjust for the campaign-like adjustment if the skill has to be increased."
 
 	Properties(23)=(PropertyID=78,Data=(Type=SDT_Int64))
 	PropertyMappings(23)=(ID=78,Name="SkillAdjustmentIndividual",ColumnHeaderText="Skill Adjustment Individual",MappingType=PVMT_IDMapped,ValueMappings=((ID=0,Name="Game's difficulty "),(ID=1,Name="Bot skill ")))
@@ -247,9 +247,9 @@ DefaultProperties
 
 	Properties(24)=(PropertyID=79,Data=(Type=SDT_Float))
 	PropertyMappings(24)=(ID=79,Name="SkillAdjustmentMinSkill",ColumnHeaderText="Skill Adjustment Skill (min)",MappingType=PVMT_Ranged,MinVal=-1.0,MaxVal=7.0,RangeIncrement=0.1)
-	PropertyDescriptions(24)="The minimum skill level the skill adjustment should have afterall."
+	PropertyDescriptions(24)="The minimum skill level the skill adjustment should have after adjusting."
 
 	Properties(25)=(PropertyID=80,Data=(Type=SDT_Float))
 	PropertyMappings(25)=(ID=80,Name="SkillAdjustmentMaxSkill",ColumnHeaderText="Skill Adjustment Skill (max)",MappingType=PVMT_Ranged,MinVal=-1.0,MaxVal=7.0,RangeIncrement=0.1)
-	PropertyDescriptions(25)="The maximum skill level the skill adjustment should have afterall."
+	PropertyDescriptions(25)="The maximum skill level the skill adjustment should have after adjusting."
 }
